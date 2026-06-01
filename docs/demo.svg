@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-labelledby="title desc">
+  <title id="title">agents-md terminal demo</title>
+  <desc id="desc">A terminal-style demo showing agents-md generating a focused AGENTS.md file and reporting a quality score.</desc>
+  <rect width="900" height="430" rx="12" fill="#101418"/>
+  <rect x="0" y="0" width="900" height="40" rx="12" fill="#1b2229"/>
+  <circle cx="24" cy="20" r="6" fill="#ff5f56"/>
+  <circle cx="44" cy="20" r="6" fill="#ffbd2e"/>
+  <circle cx="64" cy="20" r="6" fill="#27c93f"/>
+  <text x="24" y="72" fill="#d6deeb" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">$ agents-md init --no-llm --verbose</text>
+  <text x="24" y="108" fill="#8bd5ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">Scanning repo...</text>
+  <text x="24" y="136" fill="#8bd5ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">Deduplicating against README.md, CONTRIBUTING.md...</text>
+  <text x="24" y="164" fill="#8bd5ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">Rendering AGENTS.md...</text>
+  <text x="24" y="200" fill="#a6e3a1" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">Wrote AGENTS.md: 54 lines, quality 91/100, dedup removed 6 item(s).</text>
+  <text x="24" y="244" fill="#d6deeb" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">Detected:</text>
+  <text x="48" y="276" fill="#d6deeb" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">- exact commands with flags</text>
+  <text x="48" y="304" fill="#d6deeb" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">- single-test command</text>
+  <text x="48" y="332" fill="#d6deeb" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">- named exports, barrel files, Result&lt;...&gt;, API client</text>
+  <text x="48" y="360" fill="#d6deeb" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">- README duplicates removed before writing</text>
+  <text x="24" y="400" fill="#7f8c98" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">Short agent context beats long repeated context.</text>
+</svg>
