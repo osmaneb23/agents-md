@@ -16,6 +16,7 @@ SKIP_DIRS = {
     ".svn",
     ".venv",
     "venv",
+    "vendor",
     "node_modules",
     "dist",
     "build",
@@ -35,6 +36,7 @@ JS_FRAMEWORKS = {
 }
 
 JS_TESTERS = ("vitest", "jest", "mocha", "playwright", "cypress")
+JS_SOURCE_SUFFIXES = (".js", ".jsx", ".ts", ".tsx")
 PY_FRAMEWORKS = ("fastapi", "flask", "django", "starlette")
 PY_LINTERS = ("ruff", "black", "flake8", "pylint")
 PY_TYPECHECKERS = ("mypy", "pyright")
@@ -239,9 +241,95 @@ def _scan_conventions(root: Path, result: ScanResult) -> None:
             aliases = ", ".join(sorted(paths)[:4])
             result.conventions.append(ConventionFact(f"TypeScript path aliases are configured in tsconfig: {aliases}.", "tsconfig.json"))
 
+    _scan_javascript_conventions(root, result, tsconfig)
+    _scan_env_conventions(root, result)
+    _scan_test_data_conventions(root, result)
+
     for py_file in _iter_source_files(root, (".py",), limit=80):
         for class_name in _python_error_classes(py_file):
             result.conventions.append(ConventionFact(f"Custom Python error class detected: `{class_name}`.", py_file.relative_to(root).as_posix()))
+            return
+
+
+def _scan_javascript_conventions(root: Path, result: ScanResult, tsconfig: Any) -> None:
+    files = _iter_source_files(root, JS_SOURCE_SUFFIXES, limit=160)
+    if not files:
+        return
+
+    named_export_files: list[Path] = []
+    default_export_files: list[Path] = []
+    barrel_files: list[Path] = []
+    result_type_files: list[Path] = []
+    api_wrapper_files: list[Path] = []
+    fallback_catch_files: list[Path] = []
+
+    for path in files:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if re.search(r"\bexport\s+default\b", text):
+            default_export_files.append(path)
+        if re.search(r"\bexport\s+(?:const|function|class|interface|type|enum)\b|export\s*{", text):
+            named_export_files.append(path)
+        if path.stem == "index" and re.search(r"^\s*export\s+(?:\*|{[^}]+})\s+from\s+['\"]", text, re.M):
+            barrel_files.append(path)
+        if re.search(r"(?:Promise\s*<\s*)?Result\s*<[^>]+>", text):
+            result_type_files.append(path)
+        if _looks_like_api_wrapper(path, text):
+            api_wrapper_files.append(path)
+        if re.search(r"catch\s*\([^)]*\)\s*{[^{}]*(?:return\s+(?:null|undefined|false)|return\s+{[^{}]*(?:error|ok)\b)", text, re.S):
+            fallback_catch_files.append(path)
+
+    if named_export_files and not default_export_files:
+        result.conventions.append(
+            ConventionFact("JavaScript/TypeScript source uses named exports; no default exports were detected in scanned files.", _relative_list(named_export_files, root))
+        )
+    if barrel_files:
+        first = barrel_files[0]
+        import_hint = _barrel_import_hint(first, root, tsconfig)
+        result.conventions.append(ConventionFact(f"Barrel file detected at `{first.relative_to(root).as_posix()}`; prefer imports through `{import_hint}` when using that module boundary.", first.relative_to(root).as_posix()))
+    if result_type_files:
+        first = result_type_files[0].relative_to(root).as_posix()
+        result.conventions.append(ConventionFact(f"`Result<...>` return types appear in `{first}`; handle those errors as values instead of assuming exceptions.", first))
+    if api_wrapper_files:
+        first = api_wrapper_files[0].relative_to(root).as_posix()
+        result.conventions.append(ConventionFact(f"HTTP calls appear centralized in `{first}`; use that client/wrapper before adding direct fetch calls.", first))
+    if fallback_catch_files:
+        first = fallback_catch_files[0].relative_to(root).as_posix()
+        result.conventions.append(ConventionFact(f"Catch blocks in `{first}` return fallback/error values; preserve that non-throwing error flow where it is used.", first))
+
+
+def _scan_env_conventions(root: Path, result: ScanResult) -> None:
+    for name in (".env.example", ".env.sample", "example.env"):
+        path = root / name
+        if not path.is_file():
+            continue
+        vars_found: list[str] = []
+        for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            match = re.match(r"^\s*([A-Z][A-Z0-9_]+)\s*=", line)
+            if match:
+                vars_found.append(match.group(1))
+        if vars_found:
+            visible = ", ".join(vars_found[:8])
+            suffix = "..." if len(vars_found) > 8 else ""
+            result.conventions.append(ConventionFact(f"Expected environment variables are documented in `{name}`: {visible}{suffix}.", name))
+        return
+
+
+def _scan_test_data_conventions(root: Path, result: ScanResult) -> None:
+    tests = root / "tests"
+    if not tests.is_dir():
+        return
+    for dirname in ("fixtures", "factories"):
+        path = tests / dirname
+        if path.exists():
+            result.conventions.append(ConventionFact(f"Test data helpers live in `tests/{dirname}/`; prefer them over inline ad-hoc setup.", f"tests/{dirname}/"))
+            return
+    for path in sorted(tests.rglob("*")):
+        if path.is_file() and any(token in path.name.lower() for token in ("fixture", "factory", "factories")):
+            rel = path.relative_to(root).as_posix()
+            result.conventions.append(ConventionFact(f"Test helper `{rel}` exists; prefer it over duplicating setup data.", rel))
             return
 
 
@@ -295,6 +383,43 @@ def _uses_bun(root: Path, package_json: dict[str, Any]) -> bool:
         return True
     scripts = package_json.get("scripts", {})
     return isinstance(scripts, dict) and any("bun " in str(value) for value in scripts.values())
+
+
+def _looks_like_api_wrapper(path: Path, text: str) -> bool:
+    lower_name = path.name.lower()
+    path_text = path.as_posix().lower()
+    name_signal = any(token in lower_name for token in ("api", "client", "http", "fetcher", "request"))
+    path_signal = any(token in path_text for token in ("/api/", "/client/", "/http/", "/services/"))
+    call_signal = bool(re.search(r"\b(fetch|axios\.create|ky\.create|got\.extend)\s*\(", text))
+    wrapper_signal = bool(re.search(r"\b(?:export\s+)?(?:async\s+)?function\s+\w*(?:fetch|request|client|get|post)\w*\b", text))
+    return call_signal and (name_signal or path_signal or wrapper_signal)
+
+
+def _relative_list(paths: list[Path], root: Path, limit: int = 3) -> str:
+    rels = [path.relative_to(root).as_posix() for path in paths[:limit]]
+    suffix = ", ..." if len(paths) > limit else ""
+    return ", ".join(rels) + suffix
+
+
+def _barrel_import_hint(path: Path, root: Path, tsconfig: Any) -> str:
+    rel_parent = path.parent.relative_to(root).as_posix()
+    aliases = {}
+    if isinstance(tsconfig, dict):
+        raw_paths = tsconfig.get("compilerOptions", {}).get("paths", {})
+        if isinstance(raw_paths, dict):
+            aliases = raw_paths
+    for alias, targets in aliases.items():
+        if not isinstance(targets, list):
+            continue
+        for target in targets:
+            if not isinstance(target, str):
+                continue
+            prefix = target.rstrip("*").rstrip("/")
+            if prefix and rel_parent.startswith(prefix):
+                alias_prefix = alias.rstrip("*").rstrip("/")
+                remainder = rel_parent[len(prefix):].strip("/")
+                return f"{alias_prefix}/{remainder}".rstrip("/")
+    return rel_parent
 
 
 def _script_command(manager: str, name: str) -> str:

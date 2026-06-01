@@ -17,8 +17,11 @@ def normalize_fact(text: str) -> str:
 
 def read_markdown_facts(root: Path, output_name: str = "AGENTS.md") -> tuple[set[str], list[str]]:
     paths: list[Path] = []
+    output_path = (root / output_name).resolve()
     for path in root.glob("*.md"):
         if path.name == output_name:
+            continue
+        if path.is_symlink() and path.resolve() == output_path:
             continue
         paths.append(path)
     docs = root / "docs"

@@ -38,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--no-symlink", action="store_true", help="Do not create CLAUDE.md symlink.")
     init.add_argument("--dry-run", action="store_true", help="Print generated content without writing files.")
     init.add_argument("--force", action="store_true", help="Overwrite existing output without prompting.")
+    init.add_argument("--merge", action="store_true", help="Append managed sections to an existing hand-written file.")
     init.add_argument("--no-dedup", action="store_true", help="Skip README/docs deduplication.")
     init.add_argument("--verbose", action="store_true", help="Print scanner diagnostics.")
     init.set_defaults(handler=cmd_init)
@@ -70,7 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
 def cmd_init(args: argparse.Namespace) -> int:
     root = Path.cwd()
     output = root / args.output
-    if output.exists() and not args.force and not args.dry_run:
+    existing = output.read_text(encoding="utf-8") if output.exists() else None
+    if existing is not None and args.merge and has_managed_sections(existing):
+        print(f"{output.name} already has managed sections. Run `agents-md update` instead.", file=sys.stderr)
+        return 1
+    if output.exists() and not args.force and not args.dry_run and not args.merge:
         if not _confirm(f"{output.name} already exists. Overwrite it?"):
             print("Aborted; existing file was not changed.", file=sys.stderr)
             return 1
@@ -88,8 +93,17 @@ def cmd_init(args: argparse.Namespace) -> int:
     scan = scan_repo(root, output_name=output.name)
     if args.verbose:
         _print_scan(scan)
+    if not args.no_dedup:
+        if scan.docs_read:
+            _progress(f"Deduplicating against {', '.join(scan.docs_read)}")
+        else:
+            _progress("Deduplicating against existing docs")
     _progress("Rendering AGENTS.md")
     content = render_document(scan, no_dedup=args.no_dedup)
+    if args.verbose:
+        _print_dedup(scan)
+    if existing is not None and args.merge:
+        content = existing.rstrip() + "\n\n" + _managed_body(content)
     if not args.no_llm:
         provider = detect_provider(args.provider)
         if provider:
@@ -239,3 +253,18 @@ def _print_scan(scan) -> None:
         print(f"  - {command.category}: {command.command} ({command.source})", file=sys.stderr)
     if scan.docs_read:
         print(f"Docs read for dedup: {', '.join(scan.docs_read)}", file=sys.stderr)
+
+
+def _print_dedup(scan) -> None:
+    if scan.dedup.removed:
+        print("Dedup removed:", file=sys.stderr)
+        for item in scan.dedup.removed:
+            print(f"  - {item}", file=sys.stderr)
+    else:
+        print("Dedup removed 0 item(s).", file=sys.stderr)
+
+
+def _managed_body(content: str) -> str:
+    marker = "<!-- agents-md:start:"
+    start = content.find(marker)
+    return content[start:] if start >= 0 else content
