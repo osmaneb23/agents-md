@@ -12,9 +12,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install agents-md from action source
+    - name: Install agents-md
       shell: bash
-      run: python -m pip install "$GITHUB_ACTION_PATH/../../.."
+      run: python -m pip install agent-context-md
     - name: Lint AGENTS.md
       shell: bash
       run: agents-md lint "${{ inputs.path }}" --check --threshold "${{ inputs.threshold }}"
