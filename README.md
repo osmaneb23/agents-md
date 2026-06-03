@@ -8,6 +8,8 @@
 
 ![agents-md terminal demo](docs/demo.svg)
 
+The demo shows a JS/TS-style repo; simpler repos intentionally generate shorter files.
+
 ---
 
 ## The problem with most AGENTS.md generators
@@ -120,7 +122,7 @@ OPENAI_API_KEY=...   agents-md init
 GEMINI_API_KEY=...   agents-md init
 
 # Explicit provider and model:
-agents-md init --provider anthropic --model claude-opus-4-6
+agents-md init --provider anthropic --model <model-id>
 
 # Preview without writing:
 agents-md init --no-llm --dry-run --verbose
@@ -204,13 +206,13 @@ Add to `.github/workflows/ci.yml` to fail PRs when the file drops below a qualit
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: ./.github/actions/agents-md-lint
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@main
   with:
     path: AGENTS.md
     threshold: "70"
 ```
 
-The composite action is included in this repository at `.github/actions/agents-md-lint/`.
+Pin the action to a release tag once the first release is cut. The composite action installs from its own checked-out source, so it works even before the first PyPI package exists.
 
 ---
 
@@ -258,6 +260,8 @@ Supported ecosystems: **Python**, **JavaScript/TypeScript**, **Go**, **Rust**. T
 Maintainer commands live in [AGENTS.md](AGENTS.md) so the agent-facing instruction file stays authoritative and easy to lint. In short: install the dev extra from a checkout, run the focused test while iterating, run the full suite before handoff, and build the package before release work.
 
 Before changing scoring weights, deduplication rules, or managed marker formats, open an issue or PR discussion. These are product decisions that affect user trust, not implementation details.
+
+Releases are published through PyPI Trusted Publishing from `.github/workflows/publish.yml`. Configure a pending publisher for project `agents-md`, repository `osmaneb23/agents-md`, workflow `publish.yml`, environment `pypi`, then publish a GitHub release.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request expectations.
 
