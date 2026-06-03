@@ -87,7 +87,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     if not args.no_llm:
         provider = detect_provider(args.provider)
         if not provider:
-            print(missing_key_message(), file=sys.stderr)
+            print(missing_key_message(args.provider), file=sys.stderr)
             if _confirm("Run once in --no-llm mode instead?"):
                 args.no_llm = True
             else:
@@ -161,7 +161,7 @@ def cmd_update(args: argparse.Namespace) -> int:
                 print(f"LLM synthesis failed: {exc}", file=sys.stderr)
                 return 2
         else:
-            print(f"{missing_key_message()} Proceeding with static update.", file=sys.stderr)
+            print(f"{missing_key_message(args.provider)} Proceeding with static update.", file=sys.stderr)
     path.write_text(updated, encoding="utf-8")
     if changed:
         print(f"Updated: {', '.join(changed)}.")

@@ -94,3 +94,22 @@ requires-python = ">=3.11"
     captured = capsys.readouterr()
     assert code == 0
     assert "Proceeding with static update." in captured.err
+
+
+def test_requested_provider_without_key_reports_specific_env_var(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+requires-python = ">=3.11"
+""",
+        encoding="utf-8",
+    )
+
+    code = main(["init", "--provider", "anthropic", "--force", "--no-symlink"])
+
+    captured = capsys.readouterr()
+    assert code == 2
+    assert "ANTHROPIC_API_KEY is not set for provider anthropic" in captured.err

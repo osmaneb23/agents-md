@@ -41,7 +41,12 @@ def _provider_key_present(provider: str) -> bool:
     return any(os.getenv(name) for name in PROVIDER_ENV.get(provider, ()))
 
 
-def missing_key_message() -> str:
+def missing_key_message(provider: str | None = None) -> str:
+    if provider and provider != "ollama":
+        names = PROVIDER_ENV.get(provider, ())
+        if names:
+            joined = " or ".join(names)
+            return f"{joined} is not set for provider {provider}. Set it or rerun with --no-llm for offline generation."
     return (
         "No LLM provider key found. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY; "
         "pass --provider with the matching environment key; or rerun with --no-llm for offline generation."
