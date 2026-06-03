@@ -80,6 +80,10 @@ def cmd_init(args: argparse.Namespace) -> int:
             print("Aborted; existing file was not changed.", file=sys.stderr)
             return 1
 
+    if args.merge and not args.no_llm:
+        print("LLM synthesis skipped in --merge mode to preserve hand-written content.", file=sys.stderr)
+        args.no_llm = True
+
     if not args.no_llm:
         provider = detect_provider(args.provider)
         if not provider:
@@ -156,6 +160,8 @@ def cmd_update(args: argparse.Namespace) -> int:
             except LlmError as exc:
                 print(f"LLM synthesis failed: {exc}", file=sys.stderr)
                 return 2
+        else:
+            print(f"{missing_key_message()} Proceeding with static update.", file=sys.stderr)
     path.write_text(updated, encoding="utf-8")
     if changed:
         print(f"Updated: {', '.join(changed)}.")

@@ -276,7 +276,7 @@ def _scan_javascript_conventions(root: Path, result: ScanResult, tsconfig: Any) 
             barrel_files.append(path)
         if re.search(r"(?:Promise\s*<\s*)?Result\s*<[^>]+>", text):
             result_type_files.append(path)
-        if _looks_like_api_wrapper(path, text):
+        if _looks_like_api_wrapper(path, root, text):
             api_wrapper_files.append(path)
         if re.search(r"catch\s*\([^)]*\)\s*{[^{}]*(?:return\s+(?:null|undefined|false)|return\s+{[^{}]*(?:error|ok)\b)", text, re.S):
             fallback_catch_files.append(path)
@@ -385,14 +385,34 @@ def _uses_bun(root: Path, package_json: dict[str, Any]) -> bool:
     return isinstance(scripts, dict) and any("bun " in str(value) for value in scripts.values())
 
 
-def _looks_like_api_wrapper(path: Path, text: str) -> bool:
+def _looks_like_api_wrapper(path: Path, root: Path, text: str) -> bool:
     lower_name = path.name.lower()
-    path_text = path.as_posix().lower()
+    try:
+        rel_parts = path.relative_to(root).parts
+        path_text = "/".join(rel_parts).lower()
+    except ValueError:
+        rel_parts = path.parts
+        path_text = path.as_posix().lower()
     name_signal = any(token in lower_name for token in ("api", "client", "http", "fetcher", "request"))
-    path_signal = any(token in path_text for token in ("/api/", "/client/", "/http/", "/services/"))
+    path_signal = any(part.lower() in {"api", "client", "http", "services"} for part in rel_parts[:-1])
+    path_signal = path_signal or any(token in path_text for token in ("/api/", "/client/", "/http/", "/services/"))
     call_signal = bool(re.search(r"\b(fetch|axios\.create|ky\.create|got\.extend)\s*\(", text))
     wrapper_signal = bool(re.search(r"\b(?:export\s+)?(?:async\s+)?function\s+\w*(?:fetch|request|client|get|post)\w*\b", text))
     return call_signal and (name_signal or path_signal or wrapper_signal)
+
+
+def _python_project_script(pyproject: dict[str, Any]) -> str | None:
+    project = pyproject.get("project", {}) if isinstance(pyproject, dict) else {}
+    scripts = project.get("scripts", {}) if isinstance(project, dict) else {}
+    if not isinstance(scripts, dict):
+        return None
+    names = sorted(name for name in scripts if isinstance(name, str) and name.strip())
+    if not names:
+        return None
+    project_name = project.get("name")
+    if isinstance(project_name, str) and project_name in names:
+        return project_name
+    return names[0]
 
 
 def _relative_list(paths: list[Path], root: Path, limit: int = 3) -> str:
@@ -454,7 +474,9 @@ def _python_default_commands(root: Path, pyproject: dict[str, Any], manager: str
     has_dev = isinstance(extras, dict) and "dev" in extras
     if manager == "uv":
         commands.append(CommandFact("install", "uv sync", "install", "uv.lock"))
-        commands.append(CommandFact("run", "uv run agents-md --help", "run", "pyproject.toml"))
+        entrypoint = _python_project_script(pyproject)
+        if entrypoint:
+            commands.append(CommandFact("run", f"uv run {entrypoint}", "run", "pyproject.toml [project.scripts]"))
     elif manager == "Poetry":
         commands.append(CommandFact("install", "poetry install", "install", "poetry.lock"))
     elif manager == "Pixi":
@@ -585,13 +607,27 @@ def _clean_version(version: str | None) -> str | None:
 
 def _iter_source_files(root: Path, suffixes: tuple[str, ...], limit: int) -> list[Path]:
     files: list[Path] = []
-    for path in root.rglob("*"):
-        if len(files) >= limit:
-            break
-        if any(part in SKIP_DIRS for part in path.parts):
+    pending = [root]
+    while pending and len(files) < limit:
+        current = pending.pop()
+        try:
+            entries = sorted(current.iterdir(), key=lambda path: path.name)
+        except OSError:
             continue
-        if path.is_file() and path.suffix in suffixes:
-            files.append(path)
+        dirs: list[Path] = []
+        for path in entries:
+            if len(files) >= limit:
+                break
+            if path.is_symlink():
+                continue
+            rel_parts = path.relative_to(root).parts
+            if any(part in SKIP_DIRS for part in rel_parts):
+                continue
+            if path.is_dir():
+                dirs.append(path)
+            elif path.is_file() and path.suffix in suffixes:
+                files.append(path)
+        pending.extend(reversed(dirs))
     return files
 
 

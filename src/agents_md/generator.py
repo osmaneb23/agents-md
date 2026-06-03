@@ -136,22 +136,24 @@ def _conventions_section(conventions: list[ConventionFact]) -> list[str]:
 
 
 def _boundaries_section(scan: ScanResult) -> list[str]:
-    lines = [
+    risky = [cmd for cmd in scan.commands if cmd.risky or cmd.category == "migration"]
+    ask_first = [
+        f"- Ask before running `{command.command}` because it appears to touch migrations or data." for command in risky[:5]
+    ]
+    ask_first.append(
+        "- Ask before deleting files, rewriting public history, changing release/package metadata, or running commands that mutate databases/infrastructure."
+    )
+    return [
         "## Boundaries",
         "### Always Do",
         "- Run the narrowest relevant test before handing off a code change.",
-        "- Keep generated AGENTS.md content inside managed marker comments so updates remain reviewable.",
         "### Ask First",
-        "- Ask before changing quality score thresholds, deduplication rules, or managed-section marker formats.",
-        "- Ask before deleting files, rewriting public history, or changing release/package metadata.",
+        *ask_first,
         "### Never Do",
-        "- Never commit secrets, tokens, `.env` files, or downloaded browser sidecar metadata.",
+        "- Never commit secrets, tokens, or `.env` files.",
         "- Never overwrite a hand-written AGENTS.md without `--force` or an explicit confirmation.",
+        "- Never modify `vendor/` unless the user explicitly asks.",
     ]
-    risky = [cmd for cmd in scan.commands if cmd.risky or cmd.category == "migration"]
-    for command in risky[:5]:
-        lines.insert(6, f"- Ask before running `{command.command}` because it appears to touch migrations or data.")
-    return lines
 
 
 def _security_section() -> list[str]:

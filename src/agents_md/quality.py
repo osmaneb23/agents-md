@@ -196,8 +196,8 @@ def _line_points(count: int) -> int:
 
 
 def _readme_duplication_issues(path: Path, lines: list[str]) -> list[Issue]:
-    readme = path.parent / "README.md"
-    if not readme.is_file():
+    readme = _find_readme(path.parent)
+    if not readme:
         return []
     readme_text = readme.read_text(encoding="utf-8", errors="ignore")
     readme_facts = set()
@@ -220,9 +220,18 @@ def _readme_duplication_issues(path: Path, lines: list[str]) -> list[Issue]:
         command_dupe = any(
             normalize_fact(command) in facts for command in COMMAND_RE.findall(stripped) if _is_command_snippet(command)
         )
-        if (normalized in facts or command_dupe) and "never" not in normalized and "ask first" not in normalized:
+        important_boundary = any(token in normalized for token in ("never", "ask first", "ask before"))
+        if (normalized in facts or command_dupe) and not important_boundary:
             issues.append(Issue(index, "Duplicates content already present in README/docs.", "readme-duplication"))
     return issues[:8]
+
+
+def _find_readme(root: Path) -> Path | None:
+    for name in ("README.md", "readme.md", "Readme.md"):
+        path = root / name
+        if path.is_file():
+            return path
+    return None
 
 
 def _is_command_snippet(text: str) -> bool:

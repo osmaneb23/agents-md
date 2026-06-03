@@ -55,6 +55,30 @@ testpaths = ["tests"]
     assert "python -m pytest" in content
 
 
+def test_boundaries_are_repo_neutral_for_generic_repos(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(
+        json.dumps(
+            {
+                "scripts": {
+                    "test": "vitest run",
+                    "db:migrate": "prisma migrate deploy",
+                },
+                "devDependencies": {"vitest": "^3.0.0"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    content = render_document(scan_repo(tmp_path), no_dedup=True)
+
+    assert "Ask before running `npm run db:migrate`" in content
+    assert "quality score thresholds" not in content
+    assert "deduplication rules" not in content
+    assert "managed-section marker formats" not in content
+    assert "downloaded browser sidecar metadata" not in content
+    assert "Never modify `vendor/`" in content
+
+
 def test_replace_managed_sections_preserves_manual_text(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[project]\nname = \"demo\"\nversion = \"0.1.0\"\n", encoding="utf-8")
     scan = scan_repo(tmp_path)
@@ -108,6 +132,82 @@ def test_detects_high_value_typescript_conventions(tmp_path: Path) -> None:
     assert "HTTP calls appear centralized" in conventions
     assert "API_BASE_URL" in conventions
     assert "tests/fixtures" in conventions
+
+
+def test_uv_run_command_uses_project_script(tmp_path: Path) -> None:
+    (tmp_path / "uv.lock").write_text("", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo-cli"
+version = "0.1.0"
+
+[project.scripts]
+demo-cli = "demo:main"
+other = "demo:other"
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repo(tmp_path)
+    commands = {command.category: command.command for command in result.commands}
+
+    assert commands["install"] == "uv sync"
+    assert commands["run"] == "uv run demo-cli"
+
+
+def test_uv_without_project_script_omits_run_command(tmp_path: Path) -> None:
+    (tmp_path / "uv.lock").write_text("", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "library"
+version = "0.1.0"
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repo(tmp_path)
+    commands = {command.category: command.command for command in result.commands}
+
+    assert commands["install"] == "uv sync"
+    assert "run" not in commands
+
+
+def test_source_skip_dirs_are_repo_relative(tmp_path: Path) -> None:
+    project = tmp_path / "build" / "myapp"
+    src = project / "src"
+    src.mkdir(parents=True)
+    (project / "package.json").write_text(json.dumps({"dependencies": {"typescript": "^5.0.0"}}), encoding="utf-8")
+    (src / "index.ts").write_text("export const value = 1\n", encoding="utf-8")
+
+    result = scan_repo(project)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "named exports" in conventions
+
+
+def test_api_wrapper_detection_uses_repo_relative_path(tmp_path: Path) -> None:
+    project = tmp_path / "services" / "myapp"
+    src = project / "src"
+    src.mkdir(parents=True)
+    (project / "package.json").write_text(json.dumps({"dependencies": {"typescript": "^5.0.0"}}), encoding="utf-8")
+    (src / "widget.ts").write_text("export const load = () => fetch('/status')\n", encoding="utf-8")
+
+    result = scan_repo(project)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "HTTP calls appear centralized" not in conventions
+
+
+def test_api_wrapper_detection_handles_root_api_directory(tmp_path: Path) -> None:
+    api = tmp_path / "api"
+    api.mkdir()
+    (tmp_path / "package.json").write_text(json.dumps({"dependencies": {"typescript": "^5.0.0"}}), encoding="utf-8")
+    (api / "index.ts").write_text("export const load = () => fetch('/status')\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "HTTP calls appear centralized" in conventions
 
 
 def test_ignores_vendor_when_detecting_conventions(tmp_path: Path) -> None:

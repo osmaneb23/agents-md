@@ -51,7 +51,7 @@ def read_markdown_facts(root: Path, output_name: str = "AGENTS.md") -> tuple[set
 
 def should_keep_important_line(line: str) -> bool:
     lower = line.lower()
-    return any(token in lower for token in ("never", "ask first", "secret", "security", "migration", "database"))
+    return any(token in lower for token in ("never", "ask first", "ask before", "secret", "security", "migration", "database"))
 
 
 def deduplicate_lines(lines: list[str], facts: set[str], log: DedupLog) -> list[str]:

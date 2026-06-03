@@ -12,6 +12,12 @@ DEFAULT_MODELS = {
     "ollama": "llama3.1",
 }
 
+PROVIDER_ENV = {
+    "anthropic": ("ANTHROPIC_API_KEY",),
+    "openai": ("OPENAI_API_KEY",),
+    "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+}
+
 
 class LlmError(RuntimeError):
     pass
@@ -19,7 +25,9 @@ class LlmError(RuntimeError):
 
 def detect_provider(requested: str | None) -> str | None:
     if requested:
-        return requested
+        if requested == "ollama" or _provider_key_present(requested):
+            return requested
+        return None
     if os.getenv("ANTHROPIC_API_KEY"):
         return "anthropic"
     if os.getenv("OPENAI_API_KEY"):
@@ -27,6 +35,10 @@ def detect_provider(requested: str | None) -> str | None:
     if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
         return "gemini"
     return None
+
+
+def _provider_key_present(provider: str) -> bool:
+    return any(os.getenv(name) for name in PROVIDER_ENV.get(provider, ()))
 
 
 def missing_key_message() -> str:
