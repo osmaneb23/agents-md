@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from agents_md.cli import main
+from agents_md.fingerprint import compare_fingerprints, extract_fingerprint, fingerprint_repo
 
 
 def test_init_no_llm_writes_agents(tmp_path: Path, monkeypatch) -> None:
@@ -94,6 +95,36 @@ requires-python = ">=3.11"
     captured = capsys.readouterr()
     assert code == 0
     assert "Proceeding with static update." in captured.err
+
+
+def test_update_refreshes_existing_fingerprint(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+requires-python = ">=3.11"
+""",
+        encoding="utf-8",
+    )
+    assert main(["init", "--no-llm", "--force", "--no-symlink"]) == 0
+
+    pyproject.write_text(
+        """[project]
+name = "demo"
+version = "0.1.1"
+requires-python = ">=3.11"
+""",
+        encoding="utf-8",
+    )
+
+    code = main(["update", "AGENTS.md", "--no-llm"])
+
+    refreshed = extract_fingerprint((tmp_path / "AGENTS.md").read_text(encoding="utf-8"))
+    assert code == 0
+    assert refreshed is not None
+    assert compare_fingerprints(refreshed, fingerprint_repo(tmp_path))["changed"] == []
 
 
 def test_requested_provider_without_key_reports_specific_env_var(tmp_path: Path, monkeypatch, capsys) -> None:

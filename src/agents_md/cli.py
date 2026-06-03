@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .fingerprint import compare_fingerprints, extract_fingerprint, fingerprint_repo
+from .fingerprint import FINGERPRINT_RE, compare_fingerprints, encode_fingerprint, extract_fingerprint, fingerprint_repo
 from .generator import has_managed_sections, line_count, render_document, render_sections, replace_managed_sections
 from .llm import LlmError, detect_provider, missing_key_message, synthesize_with_llm
 from .quality import apply_fix, format_human, format_json, lint_file
@@ -146,10 +146,14 @@ def cmd_update(args: argparse.Namespace) -> int:
     scan = scan_repo(path.parent.resolve(), output_name=path.name)
     sections = render_sections(scan, no_dedup=args.no_dedup)
     updated, changed = replace_managed_sections(existing, sections)
-    if args.init_fingerprint and "agents-md:fingerprint" not in updated:
-        from .fingerprint import encode_fingerprint
-
-        updated = updated.rstrip() + "\n" + encode_fingerprint(fingerprint_repo(path.parent.resolve())) + "\n"
+    current_fingerprint = encode_fingerprint(fingerprint_repo(path.parent.resolve()))
+    if "agents-md:fingerprint" in updated:
+        refreshed = FINGERPRINT_RE.sub(current_fingerprint, updated)
+        if refreshed != updated:
+            updated = refreshed
+            changed.append("fingerprint")
+    elif args.init_fingerprint:
+        updated = updated.rstrip() + "\n" + current_fingerprint + "\n"
         changed.append("fingerprint")
 
     if not args.no_llm:
