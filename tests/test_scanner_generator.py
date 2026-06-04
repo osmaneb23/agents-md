@@ -186,6 +186,67 @@ version = "0.1.0"
     assert "run" not in commands
 
 
+def test_python_single_test_ignores_fixture_repo_tests(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+""",
+        encoding="utf-8",
+    )
+    fixture_tests = tmp_path / "tests" / "fixtures" / "repos" / "sample" / "tests"
+    fixture_tests.mkdir(parents=True)
+    (fixture_tests / "test_fixture.py").write_text("def test_fixture():\n    assert True\n", encoding="utf-8")
+    real_tests = tmp_path / "tests"
+    (real_tests / "test_real.py").write_text("def test_real():\n    assert True\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+    commands = {command.category: command.command for command in result.commands}
+
+    assert commands["single-test"] == "python -m pytest tests/test_real.py::test_real -xvs"
+
+
+def test_fixture_repo_corpus_is_not_reported_as_test_data_helpers(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+""",
+        encoding="utf-8",
+    )
+    fixture_repo = tmp_path / "tests" / "fixtures" / "repos" / "sample"
+    fixture_repo.mkdir(parents=True)
+    (fixture_repo / "pyproject.toml").write_text("[project]\nname = \"sample\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "Test data helpers live" not in conventions
+
+
+def test_test_data_conventions_ignore_pycache_files(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+""",
+        encoding="utf-8",
+    )
+    pycache = tmp_path / "tests" / "__pycache__"
+    pycache.mkdir(parents=True)
+    (pycache / "test_fixture.cpython-311.pyc").write_bytes(b"compiled")
+    (tmp_path / "tests" / "test_fixtures.py").write_text("def test_fixture_case():\n    assert True\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "__pycache__" not in conventions
+    assert "Test helper" not in conventions
+
+
 def test_source_skip_dirs_are_repo_relative(tmp_path: Path) -> None:
     project = tmp_path / "build" / "myapp"
     src = project / "src"

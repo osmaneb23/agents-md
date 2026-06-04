@@ -1,0 +1,17 @@
+{
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "next": "^15.3.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  }
+}

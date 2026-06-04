@@ -396,10 +396,14 @@ def _scan_test_data_conventions(root: Path, result: ScanResult) -> None:
         return
     for dirname in ("fixtures", "factories"):
         path = tests / dirname
-        if path.exists():
+        if path.exists() and not _looks_like_fixture_repo_corpus(path):
             result.conventions.append(ConventionFact(f"Test data helpers live in `tests/{dirname}/`; prefer them over inline ad-hoc setup.", f"tests/{dirname}/"))
             return
     for path in sorted(tests.rglob("*")):
+        if _is_skipped_repo_path(path, root):
+            continue
+        if path.name.startswith("test_") or path.name.endswith("_test.py"):
+            continue
         if path.is_file() and any(token in path.name.lower() for token in ("fixture", "factory", "factories")):
             rel = path.relative_to(root).as_posix()
             result.conventions.append(ConventionFact(f"Test helper `{rel}` exists; prefer it over duplicating setup data.", rel))
@@ -788,6 +792,8 @@ def _infer_python_single_test(root: Path, runner: str) -> str:
     tests = root / "tests"
     if tests.is_dir():
         for path in sorted(tests.rglob("test_*.py")):
+            if _is_fixture_test_path(path, root):
+                continue
             target = _first_python_test_target(path, root)
             if target:
                 if runner == "pytest":
@@ -798,6 +804,27 @@ def _infer_python_single_test(root: Path, runner: str) -> str:
     if runner == "pytest":
         return "python -m pytest tests/test_example.py::test_name -xvs"
     return "python -m unittest tests.test_example.TestExample.test_name -v"
+
+
+def _is_fixture_test_path(path: Path, root: Path) -> bool:
+    try:
+        rel_parts = path.relative_to(root).parts
+    except ValueError:
+        rel_parts = path.parts
+    return any(part in {"fixtures", "factories"} for part in rel_parts[:-1])
+
+
+def _is_skipped_repo_path(path: Path, root: Path) -> bool:
+    try:
+        rel_parts = path.relative_to(root).parts
+    except ValueError:
+        rel_parts = path.parts
+    return any(part in SKIP_DIRS for part in rel_parts)
+
+
+def _looks_like_fixture_repo_corpus(path: Path) -> bool:
+    markers = {"pyproject.toml", "package.json", "go.mod", "Cargo.toml"}
+    return any(child.is_file() and child.name in markers for child in path.rglob("*"))
 
 
 def _first_python_test_target(path: Path, root: Path) -> str | None:

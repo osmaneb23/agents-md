@@ -729,7 +729,7 @@ Definition of done:
 
 ### v0.2: explainability and fixture corpus
 
-1. Add fixture repos.
+1. Add fixture repos. Initial Python CLI and TypeScript app fixtures added in the v0.2.1 release line.
 2. Add `agents-md explain`. Done in the v0.2.0 release line.
 3. Add warning objects. Done in the v0.1.7 release line.
 4. Add `lint --fail-on-placeholder`. Done in the v0.1.8 release line.
@@ -1336,6 +1336,12 @@ Implementation:
 - Use tiny text fixtures only.
 - Assert snippets/properties, not full snapshots.
 - Include negative cases.
+
+Implementation status:
+
+- Initial fixture corpus added in the v0.2.1 release line.
+- Current fixtures cover a Python CLI with `uv` project scripts and a TypeScript app with aliases, barrel exports, env example, `Result<...>`, and an HTTP wrapper.
+- Tests assert high-value snippets and line budgets without snapshotting whole generated files.
 
 Acceptance:
 
