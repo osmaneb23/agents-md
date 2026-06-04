@@ -8,7 +8,7 @@ from . import __version__
 from .fingerprint import FINGERPRINT_RE, compare_fingerprints, encode_fingerprint, extract_fingerprint, fingerprint_repo
 from .generator import has_managed_sections, line_count, render_document, render_sections, replace_managed_sections
 from .llm import LlmError, detect_provider, missing_key_message, synthesize_with_llm
-from .quality import apply_fix, format_human, format_json, lint_file, lint_text
+from .quality import apply_fix, format_human, format_json, lint_file, lint_text, placeholder_issues
 from .scanner import scan_repo
 
 
@@ -62,6 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     lint.add_argument("--threshold", type=int, default=60, help="Minimum score for --check.")
     lint.add_argument("--fix", action="store_true", help="Remove duplicate/style-rule lines after confirmation.")
     lint.add_argument("--yes", action="store_true", help="Confirm --fix without prompting.")
+    lint.add_argument("--fail-on-placeholder", action="store_true", help="Exit non-zero if placeholder commands remain.")
     lint.add_argument("--json", action="store_true", help="Output JSON.")
     lint.set_defaults(handler=cmd_lint)
 
@@ -183,20 +184,28 @@ def cmd_lint(args: argparse.Namespace) -> int:
         print(f"{path} does not exist.", file=sys.stderr)
         return 1
     result = lint_file(path)
+    placeholders = placeholder_issues(path.read_text(encoding="utf-8")) if args.fail_on_placeholder else []
     if args.fix:
         if not result.issues:
             print("No auto-fixable issues detected.")
-            return 0
+            return 1 if placeholders else 0
         if not args.yes and not _confirm(f"Create {path.name}.bak and remove auto-fixable lines?"):
             print("Aborted; file was not changed.", file=sys.stderr)
             return 1
         backup = apply_fix(path, result)
         print(f"Fixed {path}; backup written to {backup}.")
+        if placeholders:
+            print("Placeholder issues remain after --fix; replace them manually.", file=sys.stderr)
+            return 1
         return 0
+    if placeholders:
+        result.issues.extend(placeholders)
     if args.check:
-        return 0 if result.score >= args.threshold else 1
+        for issue in placeholders:
+            print(f"Line {issue.line}: {issue.message}", file=sys.stderr)
+        return 0 if result.score >= args.threshold and not placeholders else 1
     print(format_json(result) if args.json else format_human(result), end="")
-    return 0
+    return 1 if placeholders else 0
 
 
 def cmd_diff(args: argparse.Namespace) -> int:

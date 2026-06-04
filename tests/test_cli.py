@@ -79,6 +79,36 @@ def test_lint_check_threshold(tmp_path: Path) -> None:
     assert code == 1
 
 
+def test_lint_fail_on_placeholder_exits_nonzero(tmp_path: Path, capsys) -> None:
+    agents = tmp_path / "AGENTS.md"
+    agents.write_text(
+        """# AGENTS.md
+
+## Commands
+- test: `pnpm test`
+- single-test: `pnpm vitest run <path> -t "<name>"`
+
+## Testing
+- Single test: `pnpm vitest run <path> -t "<name>"`
+
+## Boundaries
+### Always Do
+- Run tests.
+### Ask First
+- Ask before migrations.
+### Never Do
+- Never commit secrets.
+""",
+        encoding="utf-8",
+    )
+
+    code = main(["lint", str(agents), "--check", "--threshold", "1", "--fail-on-placeholder"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "Replace placeholder guidance" in captured.err
+
+
 def test_init_merge_preserves_hand_written_file(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "pyproject.toml").write_text(

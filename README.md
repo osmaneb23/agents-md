@@ -92,6 +92,7 @@ agents-md init --merge
 agents-md lint                         # score ./AGENTS.md
 agents-md lint path/to/AGENTS.md       # specific file
 agents-md lint --check --threshold 70  # exit 1 if score < 70
+agents-md lint --check --fail-on-placeholder  # exit 1 if template commands remain
 agents-md lint --fix                   # remove duplicate and style-rule lines
 agents-md lint --json                  # machine-readable output
 ```
@@ -199,11 +200,12 @@ Fail PRs when the score drops below a threshold:
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.7
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.8
   with:
     path: AGENTS.md
     threshold: "70"
-    version: "0.1.7"
+    version: "0.1.8"
+    fail-on-placeholder: "true"
 ```
 
 The action installs the pinned `agent-context-md` package version from the `version` input. Pin to a release tag in normal workflows; security-sensitive workflows can pin the action to a full commit SHA.

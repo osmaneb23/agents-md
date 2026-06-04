@@ -40,6 +40,11 @@ STYLE_RULE_RE = re.compile(
     re.I,
 )
 COMMAND_RE = re.compile(r"`([^`]+)`")
+ANGLE_PLACEHOLDER_RE = re.compile(r"<[A-Za-z][A-Za-z0-9_-]*>")
+TEXT_PLACEHOLDER_RE = re.compile(
+    r"\b(no high-confidence|add (?:the )?exact commands?|add a file/function-targeted command)\b",
+    re.I,
+)
 
 
 def lint_file(path: Path) -> QualityResult:
@@ -138,6 +143,17 @@ def format_human(result: QualityResult) -> str:
 
 def format_json(result: QualityResult) -> str:
     return json.dumps(result.to_dict(), indent=2, sort_keys=True) + "\n"
+
+
+def placeholder_issues(text: str) -> list[Issue]:
+    issues: list[Issue] = []
+    for index, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("<!--"):
+            continue
+        if ANGLE_PLACEHOLDER_RE.search(stripped) or TEXT_PLACEHOLDER_RE.search(stripped):
+            issues.append(Issue(index, "Replace placeholder guidance with an exact repo-specific command.", "placeholder"))
+    return issues
 
 
 def apply_fix(path: Path, result: QualityResult) -> Path:

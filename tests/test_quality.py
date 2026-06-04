@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agents_md.quality import lint_file, lint_text
+from agents_md.quality import lint_file, lint_text, placeholder_issues
 
 
 def test_scores_core_sections(tmp_path: Path) -> None:
@@ -152,3 +152,20 @@ def test_lint_text_matches_lint_file_with_root(tmp_path: Path) -> None:
     assert text_result.score == file_result.score
     assert text_result.breakdown == file_result.breakdown
     assert [issue.kind for issue in text_result.issues] == [issue.kind for issue in file_result.issues]
+
+
+def test_placeholder_issues_detect_command_templates_and_default_guidance() -> None:
+    text = """# AGENTS.md
+
+<!-- agents-md:start:testing -->
+## Testing
+- Commands: No high-confidence project commands detected.
+- Full suite: add the exact command after the test runner is confirmed.
+- Single test: `pnpm vitest run <path> -t "<name>"`
+<!-- agents-md:end:testing -->
+"""
+
+    issues = placeholder_issues(text)
+
+    assert [issue.kind for issue in issues] == ["placeholder", "placeholder", "placeholder"]
+    assert [issue.line for issue in issues] == [5, 6, 7]

@@ -571,6 +571,12 @@ Placeholder examples:
 - `<name>`
 - `test_example.py::test_name`
 
+Status:
+
+- Done in the v0.1.8 release line.
+- Placeholder checks are opt-in and do not affect the quality score.
+- `--fix` does not remove placeholders; users must replace them with real repo-specific commands.
+
 Why:
 
 It lets serious repos enforce a fully actionable AGENTS.md without changing default behavior for new repos.
@@ -726,7 +732,7 @@ Definition of done:
 1. Add fixture repos.
 2. Add `agents-md explain`.
 3. Add warning objects. Done in the v0.1.7 release line.
-4. Add `lint --fail-on-placeholder`.
+4. Add `lint --fail-on-placeholder`. Done in the v0.1.8 release line.
 5. Publish a small "what it generates on fixture repos" docs page.
 
 Definition of done:
