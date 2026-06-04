@@ -79,7 +79,7 @@ GEMINI_API_KEY=...        agents-md init
 # Explicit provider + model
 agents-md init --provider anthropic --model <model-id>
 
-# Preview without writing anything
+# Preview without writing anything; summary includes a quality score
 agents-md init --no-llm --dry-run --verbose
 
 # Append managed sections to a hand-written file
@@ -199,11 +199,11 @@ Fail PRs when the score drops below a threshold:
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.4
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.5
   with:
     path: AGENTS.md
     threshold: "70"
-    version: "0.1.4"
+    version: "0.1.5"
 ```
 
 The action installs the pinned `agent-context-md` package version from the `version` input. Pin to a release tag in normal workflows; security-sensitive workflows can pin the action to a full commit SHA.

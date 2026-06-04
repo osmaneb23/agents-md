@@ -44,6 +44,10 @@ COMMAND_RE = re.compile(r"`([^`]+)`")
 
 def lint_file(path: Path) -> QualityResult:
     text = path.read_text(encoding="utf-8")
+    return lint_text(text, root=path.parent)
+
+
+def lint_text(text: str, *, root: Path | None = None) -> QualityResult:
     lines = text.splitlines()
     lower = text.lower()
     score = 0
@@ -94,15 +98,18 @@ def lint_file(path: Path) -> QualityResult:
     if line_points < 15:
         issues.append(Issue(1, f"File has {len(lines)} lines; keep AGENTS.md focused and under 150 lines.", "length"))
 
-    duplicate_issues = _readme_duplication_issues(path, lines)
-    if duplicate_issues:
-        penalty = min(15 + (len(duplicate_issues) - 1) * 5, 45)
-        score -= penalty
-        breakdown.append(f"README duplication: -{penalty}")
-        issues.extend(duplicate_issues)
+    if root is None:
+        breakdown.append("README duplication not checked: +0")
     else:
-        score += 15
-        breakdown.append("No README duplication detected: +15")
+        duplicate_issues = _readme_duplication_issues(root, lines)
+        if duplicate_issues:
+            penalty = min(15 + (len(duplicate_issues) - 1) * 5, 45)
+            score -= penalty
+            breakdown.append(f"README duplication: -{penalty}")
+            issues.extend(duplicate_issues)
+        else:
+            score += 15
+            breakdown.append("No README duplication detected: +15")
 
     style_issues = _style_issues(lines)
     if style_issues:
@@ -195,8 +202,8 @@ def _line_points(count: int) -> int:
     return max(0, round(8 - ((count - 150) / 150) * 8))
 
 
-def _readme_duplication_issues(path: Path, lines: list[str]) -> list[Issue]:
-    readme = _find_readme(path.parent)
+def _readme_duplication_issues(root: Path, lines: list[str]) -> list[Issue]:
+    readme = _find_readme(root)
     if not readme:
         return []
     readme_text = readme.read_text(encoding="utf-8", errors="ignore")

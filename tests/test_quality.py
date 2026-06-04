@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agents_md.quality import lint_file
+from agents_md.quality import lint_file, lint_text
 
 
 def test_scores_core_sections(tmp_path: Path) -> None:
@@ -120,3 +120,35 @@ def test_does_not_flag_ask_before_boundary_duplication(tmp_path: Path) -> None:
     result = lint_file(agents)
 
     assert not any(issue.kind == "readme-duplication" for issue in result.issues)
+
+
+def test_lint_text_matches_lint_file_with_root(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("Run `python -m pytest` before committing.\n", encoding="utf-8")
+    agents = tmp_path / "AGENTS.md"
+    agents.write_text(
+        """# AGENTS.md
+
+## Commands
+- test: `python -m pytest`
+- lint: `ruff check .`
+
+## Testing
+- Single test: `python -m pytest tests/test_quality.py::test_scores_core_sections -xvs`
+
+## Boundaries
+### Always Do
+- Run tests.
+### Ask First
+- Ask before migrations.
+### Never Do
+- Never commit secrets.
+""",
+        encoding="utf-8",
+    )
+
+    file_result = lint_file(agents)
+    text_result = lint_text(agents.read_text(encoding="utf-8"), root=tmp_path)
+
+    assert text_result.score == file_result.score
+    assert text_result.breakdown == file_result.breakdown
+    assert [issue.kind for issue in text_result.issues] == [issue.kind for issue in file_result.issues]

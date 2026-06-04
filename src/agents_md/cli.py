@@ -8,7 +8,7 @@ from . import __version__
 from .fingerprint import FINGERPRINT_RE, compare_fingerprints, encode_fingerprint, extract_fingerprint, fingerprint_repo
 from .generator import has_managed_sections, line_count, render_document, render_sections, replace_managed_sections
 from .llm import LlmError, detect_provider, missing_key_message, synthesize_with_llm
-from .quality import apply_fix, format_human, format_json, lint_file
+from .quality import apply_fix, format_human, format_json, lint_file, lint_text
 from .scanner import scan_repo
 
 
@@ -233,12 +233,9 @@ def _progress(message: str) -> None:
 
 
 def _summary(content: str, output: Path, removed: int, *, dry_run: bool) -> None:
-    result = None
-    if output.exists() and not dry_run:
-        result = lint_file(output)
-    score = f"{result.score}/100" if result else "not scored in dry-run"
+    result = lint_text(content, root=output.parent) if dry_run else lint_file(output)
     action = "Would write" if dry_run else "Wrote"
-    print(f"{action} {output}: {line_count(content)} lines, quality {score}, dedup removed {removed} item(s).")
+    print(f"{action} {output}: {line_count(content)} lines, quality {result.score}/100, dedup removed {removed} item(s).")
 
 
 def _ensure_claude_symlink(root: Path, output: Path) -> None:

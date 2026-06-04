@@ -185,18 +185,15 @@ Do not build:
 
 ### 4. Score dry-run output
 
-Current state:
+Status:
 
-- `init --dry-run` says quality is "not scored in dry-run" because the file is not written.
+- Fixed in the v0.1.5 release line.
+- `init --dry-run` scores generated content in memory before writing anything.
+- `lint_file` now wraps `lint_text(text, root=None)`.
 
 Why this matters:
 
 Dry-run is the safest first interaction. It should show the score before the user writes anything.
-
-Lean fix:
-
-- Refactor `lint_file` into `lint_text(text, root=None)` plus the existing file wrapper.
-- Score the generated content in memory during dry-run.
 
 Acceptance test:
 
@@ -1219,11 +1216,11 @@ Files:
 - `tests/test_quality.py`
 - `tests/test_cli.py`
 
-Implementation:
+Implementation status:
 
-- Add `lint_text(text, root=None)`.
-- Make `lint_file` call `lint_text`.
-- In dry-run summary, score `content` in memory.
+- Done in the v0.1.5 release line.
+- `lint_file` calls `lint_text`.
+- Dry-run summary scores generated content in memory.
 
 Acceptance:
 
