@@ -28,4 +28,4 @@ jobs:
         with:
           python-version: "3.13"
       - run: python -m pip install -e .
-      - run: agents-md lint AGENTS.md --check --threshold 70
+      - run: agents-md lint AGENTS.md --check --threshold 70 --fail-on-placeholder
