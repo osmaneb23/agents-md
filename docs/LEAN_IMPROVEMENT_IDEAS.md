@@ -338,6 +338,11 @@ Create a script or docs page that runs `agents-md init --no-llm --dry-run` acros
 - dedup removed count
 - exact command count
 - empty convention rate
+
+Status:
+
+- Initial report added after v0.2.1 in `docs/FIXTURE_REPORT.md`.
+- Current report is intentionally framed as fixture sanity evidence, not a benchmark or agent-performance claim.
 - warnings
 
 This is not a claim that agents solve tasks better. It is a product health benchmark.
