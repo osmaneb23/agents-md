@@ -102,6 +102,7 @@ agents-md lint --json                  # machine-readable output
 ```bash
 agents-md update   # refresh managed sections, leave your notes alone
 agents-md diff     # show what changed in the repo since last generation
+agents-md explain  # explain detected facts, warnings, and dedup without writing files
 ```
 
 ---
@@ -200,11 +201,11 @@ Fail PRs when the score drops below a threshold:
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.8
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.2.0
   with:
     path: AGENTS.md
     threshold: "70"
-    version: "0.1.8"
+    version: "0.2.0"
     fail-on-placeholder: "true"
 ```
 

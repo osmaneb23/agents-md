@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from agents_md.dedup import deduplicate_lines, read_markdown_facts
 from agents_md.generator import has_managed_sections, render_document, render_sections, replace_managed_sections
 from agents_md.scanner import scan_repo
-from agents_md.dedup import read_markdown_facts
+from agents_md.types import DedupLog
 
 
 def test_scans_package_json_commands(tmp_path: Path) -> None:
@@ -336,3 +337,14 @@ def test_dedup_skips_claude_symlink_to_agents(tmp_path: Path) -> None:
     _, docs_read = read_markdown_facts(tmp_path)
 
     assert docs_read == ["README.md"]
+
+
+def test_dedup_matches_markdown_bullets_to_generated_bullets(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("- test: `npm test` from package.json. (vitest run)\n", encoding="utf-8")
+    facts, _ = read_markdown_facts(tmp_path)
+    log = DedupLog()
+
+    lines = deduplicate_lines(["## Commands", "- test: `npm test` from package.json. (vitest run)"], facts, log)
+
+    assert lines == ["## Commands"]
+    assert log.removed

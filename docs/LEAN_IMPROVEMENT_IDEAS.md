@@ -730,7 +730,7 @@ Definition of done:
 ### v0.2: explainability and fixture corpus
 
 1. Add fixture repos.
-2. Add `agents-md explain`.
+2. Add `agents-md explain`. Done in the v0.2.0 release line.
 3. Add warning objects. Done in the v0.1.7 release line.
 4. Add `lint --fail-on-placeholder`. Done in the v0.1.8 release line.
 5. Publish a small "what it generates on fixture repos" docs page.
@@ -1299,6 +1299,12 @@ Implementation:
 - Reuse scan and render paths.
 - Human output by default, JSON with `--json`.
 - Include docs read, detected commands, detected conventions, dedup removed lines, and warnings.
+
+Implementation status:
+
+- Done in the v0.2.0 release line.
+- `agents-md explain` is read-only and never writes AGENTS.md.
+- JSON output includes docs read, detected facts, warnings, dedup removals, generated line count, and quality score.
 
 Acceptance:
 

@@ -9,6 +9,7 @@ CODE_RE = re.compile(r"`([^`]+)`")
 
 
 def normalize_fact(text: str) -> str:
+    text = re.sub(r"^\s*[-*+]\s+", "", text)
     text = text.lower()
     text = re.sub(r"`([^`]+)`", r"\1", text)
     text = re.sub(r"[^a-z0-9_./:-]+", " ", text)

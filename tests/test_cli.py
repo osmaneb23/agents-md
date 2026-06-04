@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from agents_md.cli import main
@@ -279,6 +280,34 @@ requires-python = ">=3.11"
     captured = capsys.readouterr()
     assert code == 0
     assert "No relevant generation input changes detected." in captured.out
+
+
+def test_explain_json_reports_scan_without_writing(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "README.md").write_text("- test: `npm test` from package.json. (vitest run)\n", encoding="utf-8")
+    (tmp_path / "package.json").write_text(
+        """{
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
+""",
+        encoding="utf-8",
+    )
+
+    code = main(["explain", "--json"])
+
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert code == 0
+    assert not (tmp_path / "AGENTS.md").exists()
+    assert report["docs_read"] == ["README.md"]
+    assert any(warning["code"] == "js-package-manager-fallback" for warning in report["warnings"])
+    assert report["dedup_removed"]
+    assert isinstance(report["quality_score"], int)
 
 
 def test_requested_provider_without_key_reports_specific_env_var(tmp_path: Path, monkeypatch, capsys) -> None:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+from dataclasses import asdict
 import sys
 from pathlib import Path
 
@@ -69,6 +71,12 @@ def build_parser() -> argparse.ArgumentParser:
     diff = sub.add_parser("diff", help="Show repo changes since AGENTS.md was generated.")
     diff.add_argument("path", nargs="?", default="AGENTS.md")
     diff.set_defaults(handler=cmd_diff)
+
+    explain = sub.add_parser("explain", help="Explain what agents-md would detect without writing files.")
+    explain.add_argument("--output", default="AGENTS.md", help="Output filename to model.")
+    explain.add_argument("--no-dedup", action="store_true", help="Skip README/docs deduplication in the explanation.")
+    explain.add_argument("--json", action="store_true", help="Output JSON.")
+    explain.set_defaults(handler=cmd_explain)
 
     return parser
 
@@ -230,6 +238,29 @@ def cmd_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_explain(args: argparse.Namespace) -> int:
+    root = Path.cwd()
+    scan = scan_repo(root, output_name=args.output)
+    content = render_document(scan, no_dedup=args.no_dedup)
+    quality = lint_text(content, root=root)
+    report = {
+        "output": args.output,
+        "docs_read": scan.docs_read,
+        "stack": [asdict(fact) for fact in scan.stack],
+        "commands": [asdict(command) for command in scan.commands],
+        "conventions": [asdict(convention) for convention in scan.conventions],
+        "warnings": [asdict(warning) for warning in scan.warnings],
+        "dedup_removed": scan.dedup.removed,
+        "line_count": line_count(content),
+        "quality_score": quality.score,
+    }
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True), end="\n")
+    else:
+        print(_format_explain(report), end="")
+    return 0
+
+
 def _confirm(message: str) -> bool:
     if not sys.stdin.isatty():
         return False
@@ -245,6 +276,41 @@ def _summary(content: str, output: Path, removed: int, *, dry_run: bool) -> None
     result = lint_text(content, root=output.parent) if dry_run else lint_file(output)
     action = "Would write" if dry_run else "Wrote"
     print(f"{action} {output}: {line_count(content)} lines, quality {result.score}/100, dedup removed {removed} item(s).")
+
+
+def _format_explain(report: dict) -> str:
+    parts = [
+        f"Output: {report['output']}",
+        f"Would generate: {report['line_count']} lines, quality {report['quality_score']}/100",
+        "",
+        "Docs read:",
+    ]
+    parts.extend(_list_or_empty(report["docs_read"]))
+    parts.extend(["", "Commands:"])
+    parts.extend(
+        _list_or_empty(
+            f"{item['category']}: `{item['command']}` ({item['source']})" for item in report["commands"]
+        )
+    )
+    parts.extend(["", "Conventions:"])
+    parts.extend(_list_or_empty(f"{item['text']} ({item['source']})" for item in report["conventions"]))
+    parts.extend(["", "Warnings:"])
+    parts.extend(
+        _list_or_empty(
+            f"{item['code']}: {item['message']}" + (f" ({item['source']})" if item.get("source") else "")
+            for item in report["warnings"]
+        )
+    )
+    parts.extend(["", "Dedup removed:"])
+    parts.extend(_list_or_empty(report["dedup_removed"]))
+    return "\n".join(parts) + "\n"
+
+
+def _list_or_empty(items) -> list[str]:
+    values = list(items)
+    if not values:
+        return ["- none"]
+    return [f"- {value}" for value in values]
 
 
 def _ensure_claude_symlink(root: Path, output: Path) -> None:

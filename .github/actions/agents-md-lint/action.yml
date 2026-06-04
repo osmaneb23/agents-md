@@ -12,7 +12,7 @@ inputs:
   version:
     description: agent-context-md package version to install
     required: false
-    default: "0.1.8"
+    default: "0.2.0"
   fail-on-placeholder:
     description: Fail if placeholder commands remain
     required: false
