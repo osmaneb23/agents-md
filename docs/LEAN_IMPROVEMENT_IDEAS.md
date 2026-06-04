@@ -1745,6 +1745,191 @@ Weak version:
 
 The strong version is smaller and more defensible.
 
+## Fourth-pass detector matrix
+
+This section turns "add more conventions" into a controlled detector roadmap. A detector is worth adding only when the output would prevent a plausible agent mistake and can be tested with small fixtures.
+
+### Detector acceptance bar
+
+Every detector must answer:
+
+1. What exact source file proves the fact?
+2. What exact line should be emitted?
+3. What similar repo shape should not emit the line?
+4. What is the false-positive harm?
+5. Can the line fit in one bullet?
+6. Would the agent probably miss this on the first try?
+
+If a detector cannot answer all six, reject it.
+
+### Cross-language detectors
+
+| Detector | Source files | Example output | False-positive risk | Priority |
+|---|---|---|---|---|
+| Generated code directory | `.gitignore`, comments in files, common dirs such as `generated/`, `gen/`, `dist/` | `Do not edit generated files under gen/; change source definitions instead.` | High if directory is hand-written | P1 |
+| Env example variables | `.env.example`, `.env.sample`, `example.env` | `Expected local env vars include DATABASE_URL, OPENAI_API_KEY, and NEXT_PUBLIC_APP_URL.` | Medium if examples are stale | P1 |
+| Migration directory | `migrations/`, `alembic/`, `db/migrate/`, Prisma migrations | `Ask before changing migration files under db/migrate/.` | Low if paired with migration file patterns | P1 |
+| Multiple package managers | lock files | `Multiple lock files detected; confirm package manager before installing dependencies.` | Low | P1 warning only |
+| Workspace roots | `pnpm-workspace.yaml`, Cargo workspace, Go workspaces, Python workspace config | `This repo has workspace packages; run commands from the package root unless noted.` | Medium if too generic | P2 |
+| Codegen command | `package.json`, `Makefile`, `Taskfile.yml`, `pyproject.toml` scripts with `generate`, `codegen`, `prisma generate` | `Run code generation after changing schema files: <command>.` | Medium if script name is misleading | P2 |
+| Dangerous cleanup script | scripts named `clean`, `reset`, `seed`, `drop`, `truncate` | Warning only: `Potentially destructive script detected: <command>.` | Medium | P1 warning only |
+| Tool-owned style config | Ruff, ESLint, Prettier, gofmt, rustfmt configs | Do not emit style instructions; let linters own style. | Low | Already a lint principle |
+
+Rule:
+
+Warnings are better than generated boundaries when confidence is not high. A wrong warning annoys the user once. A wrong generated boundary misguides every agent run.
+
+### Python detectors
+
+| Detector | Source files | Example output | Reject when | Priority |
+|---|---|---|---|---|
+| Console script entrypoint | `pyproject.toml` `[project.scripts]` | `run: python -m <module>` or `run: <script> --help` | no script entrypoint exists | Done for core bug class |
+| FastAPI app entrypoint | `src/**/main.py`, `app.py`, imports of `FastAPI`, uvicorn config | `run: uvicorn package.module:app --reload` | multiple possible apps or only tests import FastAPI | P2 |
+| Django manage command | `manage.py`, `DJANGO_SETTINGS_MODULE` | `run: python manage.py runserver` and `test: python manage.py test` | no settings module or manage.py is fixture-only | P2 |
+| Alembic migrations | `alembic.ini`, `alembic/versions/` | `Ask before creating or editing Alembic migrations.` | versions dir absent and only library dependency exists | P1 |
+| Pytest marker usage | `pytest.ini`, `pyproject.toml` pytest config | `Use pytest markers from config: slow, integration.` | too many markers or markers are undocumented | P2 |
+| Nox/tox commands | `noxfile.py`, `tox.ini` | `Full validation: nox` or `tox` | config has no default session/env | P2 |
+| Ruff format/check split | `pyproject.toml`, `ruff.toml` | `lint: ruff check .`; `format: ruff format .` | no ruff config and no script | P2 |
+
+Python anti-bloat rule:
+
+Do not emit packaging explanations. Agents can read `pyproject.toml`. Emit only runnable commands and safety-critical workflow facts.
+
+### JavaScript and TypeScript detectors
+
+| Detector | Source files | Example output | Reject when | Priority |
+|---|---|---|---|---|
+| App router vs pages router | `app/`, `pages/`, Next config | `Next.js app routes live under app/.` | both exist and intent is unclear | P2 |
+| Playwright e2e command | `playwright.config.*`, scripts | `e2e: pnpm playwright test` | dependency exists but no config/script | P2 |
+| Test file convention | `*.test.ts`, `*.spec.ts`, tests dirs | `Tests use *.spec.ts naming.` | mixed convention without dominant pattern | P2 |
+| Monorepo package command | `pnpm-workspace.yaml`, root scripts, package scripts | `Run package-specific commands with pnpm --filter <pkg> <script>.` | no package manager lock or no filters needed | P2 |
+| Public env prefix | env examples, Next/Vite config | `Client-exposed env vars use NEXT_PUBLIC_ or VITE_ prefixes.` | no frontend framework signal | P2 |
+| Server-only API wrapper | files under `lib/api`, `services`, `client`, fetch/axios wrapper | `Use the shared API client in lib/api.ts instead of raw fetch.` | multiple wrappers or wrapper is only test helper | P1/P2 |
+| Barrel import convention | `index.ts` re-exports plus path alias | `Import components through @/components barrel files.` | barrel exists but imports mostly bypass it | Done class, refine |
+| Named exports only | TS files with exports and no default exports | `Use named exports; default exports are not used in source modules.` | framework files require default exports | Done class, refine |
+
+JS/TS anti-bloat rule:
+
+Do not emit framework tutorials. "This is a Next.js app" is not useful by itself. Emit only paths, commands, and conventions that affect edits.
+
+### Go detectors
+
+| Detector | Source files | Example output | Reject when | Priority |
+|---|---|---|---|---|
+| Main package command | `cmd/*/main.go`, root `main.go` | `run: go run ./cmd/server` | multiple commands and no obvious default | P2 |
+| Single package test | `*_test.go` files | `single test: go test ./pkg/foo -run TestName` | no tests | P2 |
+| Integration build tags | test files with `//go:build integration` | `Integration tests require -tags=integration.` | build tag is unrelated to tests | P2 |
+| Generated files | `// Code generated ... DO NOT EDIT.` | `Do not edit generated Go files; regenerate from source.` | no generated header | P1 |
+| Module workspace | `go.work` | `This repo uses go.work; run Go commands from the workspace root when crossing modules.` | single-module repo only | P2 |
+
+Go anti-bloat rule:
+
+Do not explain `gofmt` or idiomatic Go. Tools and agents already know that. Emit only repo-specific command shapes and generated-file boundaries.
+
+### Rust detectors
+
+| Detector | Source files | Example output | Reject when | Priority |
+|---|---|---|---|---|
+| Cargo workspace | root `Cargo.toml` with `[workspace]` | `This is a Cargo workspace; target crates with -p <crate>.` | single crate | P2 |
+| Binary command | `src/main.rs`, `src/bin/*.rs`, `[[bin]]` | `run: cargo run --bin <name>` | multiple bins and no default | P2 |
+| Feature-gated tests | `Cargo.toml` features plus tests using cfg features | `Some tests require --features <feature>.` | feature names exist but not test-relevant | P3 |
+| Clippy command | scripts or CI config | `lint: cargo clippy --all-targets --all-features -- -D warnings` | no CI/script evidence for flags | P2 |
+| Generated bindings | `build.rs`, generated dirs | `Do not edit generated bindings directly; change build inputs.` | build.rs is unrelated to codegen | P3 |
+
+Rust anti-bloat rule:
+
+Cargo conventions are already obvious. The useful facts are workspace targeting, binary names, feature flags, and generated boundaries.
+
+### Documentation and dedup detectors
+
+| Detector | Source files | Example output | Reject when | Priority |
+|---|---|---|---|---|
+| README exact command duplication | README/docs | Remove duplicate generated line | source command is vague or different flags matter | Existing, expand |
+| Contributing command precedence | `CONTRIBUTING.md`, docs | Prefer commands from CONTRIBUTING when README conflicts | no conflict | P2 |
+| Docs-owned architecture | README/docs/architecture docs | Do not generate architecture summaries | always | P1 policy |
+| Manual AGENTS notes | existing AGENTS.md outside markers | Preserve byte-for-byte | never rewrite | P0 |
+| Stale fingerprint input | README/docs/env examples | `agents-md diff` reports input drift | docs are excluded intentionally | P0/P1 |
+
+Dedup anti-bloat rule:
+
+If a fact is already in docs and does not need more exact flags, remove it from generated output. The best generated line is often no line.
+
+### Security and boundary detectors
+
+| Detector | Source files | Example output | Reject when | Priority |
+|---|---|---|---|---|
+| Secret files | `.gitignore`, env examples | `Never commit secrets, tokens, or .env files.` | never reject generic secret boundary | Done |
+| Infra directories | `terraform/`, `pulumi/`, `cloudformation/` | `Ask before changing infrastructure definitions under terraform/.` | examples only or docs only | P2 |
+| Database seed/reset scripts | scripts with seed/reset/drop/truncate | `Ask before running <script>; it may mutate local or shared data.` | script is clearly test-only and isolated | P1 warning/P2 boundary |
+| Release metadata | `pyproject.toml`, package manifests, workflows | `Ask before changing release/package metadata.` | project has no package/release workflow | Done class |
+| Vendor boundary | `vendor/` | `Never modify vendor/ unless explicitly asked.` | no vendor dir | Done |
+
+Boundary anti-bloat rule:
+
+Boundaries should be boring, specific, and few. A boundary list with ten "ask first" bullets trains agents to ignore it.
+
+### Detector ordering
+
+When multiple candidate lines compete, prefer:
+
+1. Safety boundaries over conventions.
+2. Exact commands over stack labels.
+3. Single-test commands over full-suite commands.
+4. Repo-specific paths over framework names.
+5. Warnings over generated lines when confidence is medium.
+6. No line over a duplicated line.
+
+### Detector output cap
+
+Default caps for generated AGENTS.md:
+
+- Stack: 6 bullets.
+- Commands: 6 bullets.
+- Testing: 4 bullets.
+- Conventions: 6 bullets.
+- Boundaries: 6 bullets total across tiers.
+- Security: 4 bullets.
+
+Overflow behavior:
+
+- Keep highest-confidence, highest-impact lines.
+- Put omitted low-confidence facts in `explain`, not AGENTS.md.
+- Never create a "More notes" section to preserve everything.
+
+### Detector review checklist
+
+Before merging any detector:
+
+1. Add a positive fixture.
+2. Add a negative fixture.
+3. Add a fixture where the fact is already in README and should dedup.
+4. Confirm output line is under 120 characters when practical.
+5. Confirm generated file for this repo stays under 80 lines.
+6. Confirm `lint --json` output stays stable unless intentionally changed.
+7. Confirm no runtime dependency was added.
+8. Confirm skipped dirs are respected using relative paths.
+9. Confirm symlink handling does not duplicate AGENTS.md and CLAUDE.md.
+10. Add a changelog note only if user-visible behavior changed.
+
+### Detectors to explicitly reject
+
+Reject these unless a future benchmark proves they help:
+
+- "Architecture overview" summarizer.
+- "Coding style" prose from source formatting.
+- Full import graph summaries.
+- Git history analysis.
+- Contributor personality or authorship analysis.
+- Automatic dependency health summaries.
+- Broad "AI readiness" score.
+- Generated onboarding guide.
+- Generated task plan for the next agent.
+- LLM-only convention detection with no static source trace.
+
+Reason:
+
+These ideas can produce impressive demos, but they either duplicate existing docs, add fragile claims, create privacy concerns, or inflate prompt context.
+
 ## My honest answer to "is this useful?"
 
 Yes, but only if it stays disciplined.
