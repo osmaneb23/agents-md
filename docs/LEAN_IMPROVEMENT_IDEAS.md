@@ -161,8 +161,8 @@ Do not build:
 Current state:
 
 - `init --merge` skips LLM synthesis to preserve hand-written content.
-- `update` still can synthesize the full updated document when a provider key is present.
-- That means manual notes outside managed markers may be rewritten by the LLM.
+- Fixed after v0.1.2; update mode skips LLM synthesis even when a provider key is present.
+- The update path is structural: it replaces managed sections and refreshes fingerprints only.
 
 Why this matters:
 
@@ -1154,11 +1154,11 @@ Files:
 - `src/agents_md/cli.py`
 - `tests/test_cli.py`
 
-Implementation:
+Implementation status:
 
-- When `cmd_update` is called, skip LLM synthesis entirely by default.
-- Print `LLM synthesis skipped in update mode to preserve manual content.` when provider keys are present and `--no-llm` was not passed.
-- Optionally add a future explicit `--llm-managed-only`, but do not build it now.
+- Done after v0.1.2.
+- `cmd_update` skips LLM synthesis entirely.
+- It prints `LLM synthesis skipped in update mode to preserve manual content.` when provider keys are present and `--no-llm` was not passed.
 
 Acceptance:
 

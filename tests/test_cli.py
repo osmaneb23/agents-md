@@ -97,6 +97,41 @@ requires-python = ">=3.11"
     assert "Proceeding with static update." in captured.err
 
 
+def test_update_with_provider_key_skips_llm_and_preserves_manual_text(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "dummy")
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+requires-python = ">=3.11"
+""",
+        encoding="utf-8",
+    )
+    assert main(["init", "--no-llm", "--force", "--no-symlink"]) == 0
+    generated = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    manual_top = "# Manual Notes\n\nKeep this top note exactly.\n\n"
+    manual_bottom = "\nKeep this bottom note exactly.\n"
+    (tmp_path / "AGENTS.md").write_text(manual_top + generated + manual_bottom, encoding="utf-8")
+
+    def fail_synthesis(*args, **kwargs):
+        raise AssertionError("update mode must not call LLM synthesis")
+
+    monkeypatch.setattr("agents_md.cli.synthesize_with_llm", fail_synthesis)
+    capsys.readouterr()
+
+    code = main(["update", "AGENTS.md"])
+
+    captured = capsys.readouterr()
+    updated = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert code == 0
+    assert "LLM synthesis skipped in update mode to preserve manual content." in captured.err
+    assert updated.startswith(manual_top)
+    assert updated.endswith(manual_bottom)
+
+
 def test_update_refreshes_existing_fingerprint(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     pyproject = tmp_path / "pyproject.toml"

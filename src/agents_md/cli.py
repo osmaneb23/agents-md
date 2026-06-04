@@ -46,8 +46,12 @@ def build_parser() -> argparse.ArgumentParser:
     update = sub.add_parser("update", help="Refresh managed sections of an existing AGENTS.md.")
     update.add_argument("path", nargs="?", default="AGENTS.md")
     update.add_argument("--no-llm", action="store_true", help="Do not call an LLM.")
-    update.add_argument("--provider", choices=["anthropic", "openai", "ollama", "gemini"], help="LLM provider for synthesis.")
-    update.add_argument("--model", help="Override the provider default model.")
+    update.add_argument(
+        "--provider",
+        choices=["anthropic", "openai", "ollama", "gemini"],
+        help="Accepted for compatibility; update skips LLM synthesis to preserve manual content.",
+    )
+    update.add_argument("--model", help="Accepted for compatibility; update skips LLM synthesis.")
     update.add_argument("--no-dedup", action="store_true", help="Skip README/docs deduplication.")
     update.add_argument("--init-fingerprint", action="store_true", help="Add a fingerprint when updating managed sections.")
     update.set_defaults(handler=cmd_update)
@@ -159,11 +163,7 @@ def cmd_update(args: argparse.Namespace) -> int:
     if not args.no_llm:
         provider = detect_provider(args.provider)
         if provider:
-            try:
-                updated = synthesize_with_llm(updated, provider=provider, model=args.model)
-            except LlmError as exc:
-                print(f"LLM synthesis failed: {exc}", file=sys.stderr)
-                return 2
+            print("LLM synthesis skipped in update mode to preserve manual content.", file=sys.stderr)
         else:
             print(f"{missing_key_message(args.provider)} Proceeding with static update.", file=sys.stderr)
     path.write_text(updated, encoding="utf-8")
