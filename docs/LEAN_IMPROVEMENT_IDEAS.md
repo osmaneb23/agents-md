@@ -95,13 +95,13 @@ Bad metrics:
 
 These are not big features. They are small trust and correctness improvements.
 
-### 1. Pin the reusable GitHub Action's installed package version
+### 1. Keep the reusable GitHub Action's installed package version pinned
 
-Current state:
+Status:
 
-- README recommends `uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.1`.
-- The composite action runs `python -m pip install agent-context-md`.
-- That means a user pinning the action to `v0.1.1` still gets the newest PyPI package at runtime.
+- Fixed in the v0.1.2 release line.
+- The composite action exposes a `version` input.
+- The action installs `agent-context-md==${{ inputs.version }}` instead of the latest PyPI package.
 
 Why this matters:
 
@@ -1111,11 +1111,11 @@ If the answer to 2, 4, 6, or 7 is "yes" and the benefit is not obvious, do not b
 
 ## Implementation-ready cards
 
-### Card 1: Pin package version in the GitHub Action
+### Card 1: Keep package version pinned in the GitHub Action
 
 User story:
 
-As a repo maintainer pinning `osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.1`, I want the action to install the matching `agent-context-md` package version so old workflows do not silently receive new lint behavior.
+As a repo maintainer pinning `osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.2`, I want the action to install the matching `agent-context-md` package version so old workflows do not silently receive new lint behavior.
 
 Files:
 
@@ -1123,11 +1123,11 @@ Files:
 - `README.md`
 - `tests/` only if adding a static action metadata test
 
-Implementation:
+Implementation status:
 
-- Add input `version` with default `"0.1.1"` for the current release line.
-- Change install command to `python -m pip install "agent-context-md==${{ inputs.version }}"`.
-- README example can show the default and mention users can override it.
+- Done for the v0.1.2 release line.
+- Keep the input default aligned with `pyproject.toml` during future release prep.
+- README example shows the default and mentions users can override it.
 
 Acceptance:
 
@@ -1979,8 +1979,8 @@ The project promises non-destructive updates. That promise must be absolute.
 
 If only one release-quality fix ships next, make it:
 
-> Pin the package version in the reusable GitHub Action.
+> Keep the package version in the reusable GitHub Action aligned with each release.
 
 Reason:
 
-Users pin actions for reproducibility. The current action tag still installs latest PyPI, which breaks that mental model.
+Users pin actions for reproducibility. The action should keep matching the package version from the same release line instead of silently drifting to latest PyPI.

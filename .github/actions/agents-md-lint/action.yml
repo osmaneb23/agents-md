@@ -9,12 +9,16 @@ inputs:
     description: Minimum accepted lint score
     required: false
     default: "60"
+  version:
+    description: agent-context-md package version to install
+    required: false
+    default: "0.1.2"
 runs:
   using: composite
   steps:
     - name: Install agents-md
       shell: bash
-      run: python -m pip install agent-context-md
+      run: python -m pip install "agent-context-md==${{ inputs.version }}"
     - name: Lint AGENTS.md
       shell: bash
       run: agents-md lint "${{ inputs.path }}" --check --threshold "${{ inputs.threshold }}"
