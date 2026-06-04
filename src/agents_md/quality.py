@@ -253,7 +253,7 @@ def _style_issues(lines: list[str]) -> list[Issue]:
 
 def _verdict(score: int) -> str:
     if score >= 85:
-        return "Excellent. This file will improve agent performance."
+        return "Excellent. Strong, focused agent context with low obvious waste."
     if score >= 65:
         return "Good. A few improvements would help."
     if score >= 45:

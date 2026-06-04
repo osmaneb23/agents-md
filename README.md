@@ -183,7 +183,7 @@ Pass `--verbose` to see the full list of what was removed and why.
 
 Score guide:
 
-- **85-100** — This file will improve agent performance.
+- **85-100** — Strong, focused agent context with low obvious waste.
 - **65-84** — A few improvements would help.
 - **45-64** — Key sections are missing or there's redundant content.
 - **0-44** — This file is likely slowing agent sessions down.
