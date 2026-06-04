@@ -863,6 +863,614 @@ Minimum tests for any detector:
 - Add fixture benchmark docs.
 - Add optional eval harness after the product-health benchmark is stable.
 
+## Second-pass source-backed analysis
+
+This section records what the current external landscape implies for `agents-md`.
+
+### Official guidance implications
+
+#### Codex instruction loading favors byte discipline
+
+OpenAI's Codex docs say Codex builds an instruction chain from global and project files, walks from the project root to the current directory, and stops adding files once the combined project-doc size reaches `project_doc_max_bytes`, defaulting to 32 KiB.
+
+Implications:
+
+- `agents-md lint` should eventually score bytes, not only lines.
+- Generated root files should stay short because nested instructions may be appended later.
+- A future `split-plan` should estimate total loaded bytes for likely working directories.
+- Long generated "architecture overview" sections are especially risky because they consume the always-loaded root budget.
+
+Source: https://developers.openai.com/codex/guides/agents-md
+
+#### GitHub Actions reproducibility favors pinning
+
+GitHub's secure-use docs say a compromised action can access repository secrets and `GITHUB_TOKEN`, and that pinning actions to a full-length commit SHA is the immutable-release option. Tags are convenient but can move.
+
+Implications:
+
+- The README can show a tag for usability, but the docs should mention SHA pinning for security-sensitive workflows.
+- The composite action should not install an unpinned PyPI package by default.
+- Release notes should include the exact action tag and package version together.
+- A future `SECURITY.md` should describe how users should pin the action.
+
+Source: https://docs.github.com/en/actions/reference/security/secure-use
+
+#### OpenSSF Scorecard points to low-cost trust work
+
+OpenSSF Scorecard checks include `Pinned-Dependencies`, `Security-Policy`, `Token-Permissions`, `CI-Tests`, `Packaging`, and related supply-chain signals.
+
+Implications:
+
+- Add `SECURITY.md` before the project is widely shared.
+- Keep workflow permissions minimal. The current publish workflow correctly scopes `contents: read` and `id-token: write` only in the publish job.
+- Consider a Scorecard workflow later, but do not add a noisy badge until it is useful.
+- Do not add unnecessary dependencies because every dependency creates another maintenance and security surface.
+
+Source: https://github.com/ossf/scorecard
+
+#### AGENTS.md is intentionally simple
+
+The open AGENTS.md repository describes the format as a simple, open format and a README for agents.
+
+Implications:
+
+- `agents-md` should not add frontmatter, private metadata blocks, or custom schema requirements to the generated user-facing file.
+- Managed markers and fingerprint comments are acceptable because they are hidden implementation metadata and keep updates safe.
+- Human readability should remain a release gate.
+
+Source: https://github.com/agentsmd/agents.md
+
+### Research implications
+
+#### ETH evaluation supports "minimal requirements"
+
+The ETH AGENTS.md evaluation says context files can reduce task success and increase inference cost, and concludes context files should describe only minimal requirements.
+
+Implications:
+
+- "Generate less" is not just branding; it is the product safety model.
+- Quality scoring should penalize generic requirements, not reward exhaustive coverage.
+- Benchmarks should include "no context" as a baseline when actual agent-task evals arrive.
+- The README should stay cautious and avoid guaranteed performance claims.
+
+Source: https://arxiv.org/abs/2602.11988
+
+#### Configuration study supports AGENTS.md as a natural starting point
+
+The "Configuring Agentic AI Coding Tools" study found repository-level context files dominate configuration mechanisms, with AGENTS.md emerging as an interoperable standard across tools. It also found advanced mechanisms such as Skills and Subagents are less common.
+
+Implications:
+
+- Root `AGENTS.md` is the right initial target.
+- Advanced mechanisms should be optional and late.
+- The CLI should remain useful to teams that do not use any particular agent framework.
+- Compatibility matters more than novelty.
+
+Source: https://arxiv.org/abs/2602.14690
+
+#### Codified Context is relevant but not the v0 target
+
+The Codified Context paper describes a large 108,000-line system using a hot-memory constitution, 19 specialized agents, and 34 on-demand spec documents.
+
+Implications:
+
+- Path-scoped or tiered context can matter for large systems.
+- `agents-md` should not default to that model for small repos.
+- `split-plan` should be advisory first, write later, and only when repo shape justifies it.
+- A 30-line root file plus optional package-local files is preferable to one large generated root manifesto.
+
+Source: https://arxiv.org/abs/2602.20478
+
+## Adjacent tool positioning
+
+This is not a dunk list. These tools show real demand. The point is to understand where `agents-md` should stay different.
+
+### `agentmd-gen`
+
+Observed positioning:
+
+- Generates multiple context-file formats such as `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, and Copilot instruction files.
+- Has scoring and an `eval` command.
+- Has tiered mode that writes a top-level file plus per-subsystem files under `.agents/`.
+
+What to learn:
+
+- Users want measurement, not only generation.
+- Tiered context is a serious pattern for large repos.
+- Multi-format output is attractive for teams using several agents.
+
+What not to copy now:
+
+- Do not make multi-format output the default.
+- Do not write `.agents/` directories by default.
+- Do not claim performance impact without reproducible local evidence.
+
+Lean response:
+
+- Build `explain` and fixture benchmarks first.
+- Add `split-plan` before any tiered writes.
+- Keep `AGENTS.md` canonical and `CLAUDE.md` as a symlink.
+
+Source: https://pypi.org/project/agentmd-gen/
+
+### `agents.ge`
+
+Observed positioning:
+
+- Treats `AGENTS.md` and tool-specific files as entrypoints.
+- Uses `.agents/` as a durable source of truth for project memory, reusable rules, structured knowledge, and MCP definitions.
+- Targets mixed-agent teams.
+
+What to learn:
+
+- There is market pull for project memory and cross-agent synchronization.
+- Durable memory is a different product category than generating one lean file.
+
+What not to copy now:
+
+- Do not turn `agents-md` into a memory product.
+- Do not add MCP sync.
+- Do not add capture hooks.
+
+Lean response:
+
+- Mention memory tools as adjacent, not competing head-on.
+- Preserve zero telemetry and zero runtime dependencies.
+- If memory ever matters, integrate by reading explicit docs, not by owning the memory layer.
+
+Source: https://agents.ge/
+
+### `agentmd`
+
+Observed positioning:
+
+- Defines a separate `AGENT.md` with schema/frontmatter.
+- Can generate Cursor, Claude, and Copilot files from one structured source.
+- Explicitly contrasts AGENT.md with plain, free-form AGENTS.md.
+
+What to learn:
+
+- Some teams want schemas and adapters.
+- Plain AGENTS.md remains valuable because it is consumed directly.
+
+What not to copy now:
+
+- Do not add frontmatter to generated AGENTS.md.
+- Do not create a new schema unless the plain format cannot represent what users need.
+- Do not create adapter churn before the core generator is trusted.
+
+Lean response:
+
+- Keep generated AGENTS.md simple.
+- Make `lint --json` stable enough for external tools.
+- If schema becomes necessary, apply it to machine output, not to the human-facing AGENTS.md.
+
+Source: https://pypi.org/project/agentmd/
+
+### `agentskill` / `agsk`
+
+Observed positioning:
+
+- Describes itself as forensic extraction.
+- Analyzes directory tree, config, git history, import graph, symbols, tests, and style measurements.
+- Supports many languages and can generate AGENTS.md.
+
+What to learn:
+
+- Rich static analysis can produce impressive repo-specific context.
+- Fixtures and examples across languages are valuable credibility assets.
+
+What not to copy now:
+
+- Do not analyze commit history.
+- Do not measure indentation, blank lines, and style distributions for AGENTS.md output.
+- Do not add import graph analysis unless a specific generated line needs it.
+
+Lean response:
+
+- Use a narrow detector bar: only facts that prevent agent mistakes.
+- Add more languages slowly through fixtures.
+- Keep "style belongs to linters" as a hard rule.
+
+Source: https://pypi.org/project/agsk/
+
+## Competitive wedge
+
+`agents-md` should not compete on "most complete project understanding." That path leads to bigger output, heavier scans, and fragile claims.
+
+It should compete on:
+
+1. Shortest useful AGENTS.md.
+2. Best deduplication against existing docs.
+3. Safest update semantics.
+4. Most honest scoring.
+5. Best first-run offline experience.
+6. Clear source tracing for every generated line.
+7. Low dependency and security footprint.
+
+The tagline in product decisions should be:
+
+> Generate less. Preserve more. Explain every line.
+
+## Decision framework for new ideas
+
+Before adding any feature, answer these questions:
+
+1. Does this reduce repeated agent mistakes, or only make the tool feel smarter?
+2. Does this write more text into always-loaded context?
+3. Can the agent already discover this from README, manifests, or source in under one minute?
+4. What is the false-positive cost if this detector is wrong?
+5. Is the output one concise line?
+6. Does this require a runtime dependency?
+7. Does this create external state, network calls, telemetry, or credentials?
+8. Can it be tested with one positive fixture and one negative fixture?
+9. Does it preserve hand-written AGENTS.md content?
+10. Would a maintainer understand why the line appeared?
+
+If the answer to 2, 4, 6, or 7 is "yes" and the benefit is not obvious, do not build it.
+
+## Implementation-ready cards
+
+### Card 1: Pin package version in the GitHub Action
+
+User story:
+
+As a repo maintainer pinning `osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.1`, I want the action to install the matching `agent-context-md` package version so old workflows do not silently receive new lint behavior.
+
+Files:
+
+- `.github/actions/agents-md-lint/action.yml`
+- `README.md`
+- `tests/` only if adding a static action metadata test
+
+Implementation:
+
+- Add input `version` with default `"0.1.1"` for the current release line.
+- Change install command to `python -m pip install "agent-context-md==${{ inputs.version }}"`.
+- README example can show the default and mention users can override it.
+
+Acceptance:
+
+- Action metadata contains the version input.
+- Install line is pinned.
+- README no longer implies tag pinning alone pins package behavior.
+
+Risk:
+
+- Users on `@main` may get a default version older than latest until release metadata is updated.
+
+Mitigation:
+
+- In unreleased `main`, default to current package version and update it during release prep.
+
+### Card 2: Update must never rewrite manual content
+
+User story:
+
+As a maintainer with manual notes above or below managed sections, I want `agents-md update` to preserve those notes byte-for-byte even if LLM provider keys are present.
+
+Files:
+
+- `src/agents_md/cli.py`
+- `tests/test_cli.py`
+
+Implementation:
+
+- When `cmd_update` is called, skip LLM synthesis entirely by default.
+- Print `LLM synthesis skipped in update mode to preserve manual content.` when provider keys are present and `--no-llm` was not passed.
+- Optionally add a future explicit `--llm-managed-only`, but do not build it now.
+
+Acceptance:
+
+- Test creates AGENTS.md with manual text outside markers, sets `ANTHROPIC_API_KEY`, runs update, and asserts manual text is byte-identical.
+- Existing update static behavior still passes.
+
+Risk:
+
+- Users expecting LLM polish during update lose that behavior.
+
+Mitigation:
+
+- Safety beats polish. Mention `init` can still use synthesis on new generated files.
+
+### Card 3: Fingerprint docs and env examples
+
+User story:
+
+As a maintainer relying on `agents-md diff`, I want it to detect when README, docs, or env examples changed enough that generated output may be stale.
+
+Files:
+
+- `src/agents_md/fingerprint.py`
+- `src/agents_md/dedup.py` if sharing doc discovery
+- `tests/test_cli.py` or `tests/test_scanner_generator.py`
+
+Implementation:
+
+- Add root Markdown docs except output file and symlink aliases.
+- Add `docs/**/*.md`.
+- Add `.env.example`, `.env.sample`, `example.env`.
+- Keep stable sorted ordering.
+
+Acceptance:
+
+- Changing README makes `diff` report changed README.
+- Changing `.env.example` makes `diff` report changed env example.
+- `CLAUDE.md` symlink to `AGENTS.md` is still excluded.
+
+Risk:
+
+- More frequent diff notices.
+
+Mitigation:
+
+- That is correct if docs affect deduplication.
+
+### Card 4: Score dry-run output
+
+User story:
+
+As a first-time user, I want `agents-md init --dry-run` to show quality score before writing a file.
+
+Files:
+
+- `src/agents_md/quality.py`
+- `src/agents_md/cli.py`
+- `tests/test_quality.py`
+- `tests/test_cli.py`
+
+Implementation:
+
+- Add `lint_text(text, root=None)`.
+- Make `lint_file` call `lint_text`.
+- In dry-run summary, score `content` in memory.
+
+Acceptance:
+
+- Dry-run summary prints `quality <score>/100`.
+- `lint_file` remains compatible.
+- README duplication scoring works when a root path is passed.
+
+Risk:
+
+- `lint_text` needs root context for README duplication.
+
+Mitigation:
+
+- Accept optional root; if absent, skip README duplication and say so in docs only if exposed publicly.
+
+### Card 5: Add warnings without adding a generated section
+
+User story:
+
+As a user, I want the CLI to tell me when it is uncertain without forcing that uncertainty into AGENTS.md.
+
+Files:
+
+- `src/agents_md/types.py`
+- `src/agents_md/scanner.py`
+- `src/agents_md/cli.py`
+- tests
+
+Implementation:
+
+- Add `ScanWarning(code, message, source=None)`.
+- Populate warnings for no package manager, no single test, multiple package managers, placeholders, no commands.
+- Print in `--verbose` and later `explain`.
+
+Acceptance:
+
+- Warning appears in verbose output.
+- Generated AGENTS.md remains unchanged.
+
+Risk:
+
+- Too many warnings feel noisy.
+
+Mitigation:
+
+- Keep warning set small and actionable.
+
+### Card 6: Add explain before adding more detectors
+
+User story:
+
+As a skeptical maintainer, I want to see why `agents-md` kept or removed each important line.
+
+Files:
+
+- `src/agents_md/cli.py`
+- `src/agents_md/types.py`
+- `src/agents_md/dedup.py`
+- tests
+
+Implementation:
+
+- Add subcommand `explain`.
+- Reuse scan and render paths.
+- Human output by default, JSON with `--json`.
+- Include docs read, detected commands, detected conventions, dedup removed lines, and warnings.
+
+Acceptance:
+
+- `agents-md explain --json` returns stable JSON.
+- No generated files are written.
+- Does not require an LLM key.
+
+Risk:
+
+- Explain becomes a second implementation of generation.
+
+Mitigation:
+
+- It must call the same scan/render code as `init`.
+
+### Card 7: Fixture corpus
+
+User story:
+
+As a contributor adding a detector, I want small fixture repos that show expected behavior and prevent regressions.
+
+Files:
+
+- `tests/fixtures/repos/...`
+- `tests/test_fixtures.py`
+
+Implementation:
+
+- Use tiny text fixtures only.
+- Assert snippets/properties, not full snapshots.
+- Include negative cases.
+
+Acceptance:
+
+- Fixtures cover Python CLI, Python library, JS app, monorepo, Go, Rust, env example, migration, README duplication.
+- Full test suite stays under one second locally if possible.
+
+Risk:
+
+- Fixture sprawl.
+
+Mitigation:
+
+- One fixture per behavior class, not per framework version.
+
+## Public credibility checklist
+
+These are not product features, but they make the project look safer and easier to adopt.
+
+### Add `SECURITY.md`
+
+Keep it short:
+
+- supported versions
+- how to report vulnerabilities
+- do not include secrets in reports
+- note that the tool scans local files and has no telemetry
+
+Why:
+
+Open-source users look for a vulnerability reporting path. OpenSSF Scorecard also recognizes a security policy.
+
+### Add focused issue templates
+
+Templates:
+
+- wrong generated command
+- false-positive convention
+- missing convention
+- docs dedup issue
+
+Why:
+
+Bad detector reports need structured data. Otherwise issues become "it was bad on my repo" with no reproduction.
+
+### Add `examples/` only if generated from fixtures
+
+Good:
+
+- `examples/python-cli.AGENTS.md`
+- `examples/next-app.AGENTS.md`
+- `examples/go-module.AGENTS.md`
+
+Bad:
+
+- broad tutorial examples
+- fake impressive output not tied to fixtures
+
+Rule:
+
+Examples should be generated by tests or a script, not hand-curated marketing copy.
+
+### Add a release checklist
+
+Short file or docs section:
+
+- bump `pyproject.toml`
+- bump `__version__`
+- bump action default package version
+- regenerate AGENTS.md
+- run tests
+- build
+- twine check
+- publish release
+- verify PyPI install
+
+Why:
+
+This prevents the exact kind of action/package/version mismatch that already almost happened.
+
+### Consider dependency update automation later
+
+This project has almost no dependencies, which is good. If optional SDKs need maintenance, Dependabot or Renovate can open PRs.
+
+Do not add it until there is real dependency churn.
+
+## Launch and feedback loop ideas
+
+### Show HN positioning
+
+The strongest honest hook:
+
+> ETH found generated AGENTS.md files can make agents worse. I built a generator that tries to write less.
+
+Do not lead with:
+
+- "AI that understands your codebase"
+- "boosts performance"
+- "universal agent memory"
+
+Ask for:
+
+- repos where static mode misses real conventions
+- examples of bad generated AGENTS.md files
+- feedback on the quality score
+
+### GitHub issue seeding
+
+Before a launch, create a few honest issues:
+
+- "Add SECURITY.md"
+- "Pin package version in composite action"
+- "Track README/docs in fingerprints"
+- "Add explain command"
+- "Add fixture corpus"
+
+Why:
+
+It shows the project has a real roadmap and gives contributors places to help.
+
+### README honesty
+
+Keep the current honesty:
+
+- PyPI package is `agent-context-md`.
+- Command is `agents-md`.
+- Simpler repos generate shorter files.
+- Static mode works offline.
+
+Consider adding later:
+
+- "This project does not claim AGENTS.md always improves task success."
+- "The goal is to reduce obvious context waste and make AGENTS.md easier to maintain."
+
+## Anti-bloat release gates
+
+Before any release, ask:
+
+1. Did generated AGENTS.md for this repo stay under 80 lines?
+2. Did runtime dependencies stay at zero?
+3. Did the README avoid stronger claims than the evidence supports?
+4. Did every new detector include a negative test?
+5. Did update preserve manual content?
+6. Did `--no-llm` remain a first-class path?
+7. Did the action and package versions stay aligned?
+8. Did CI stay fast?
+9. Did the release avoid new external services?
+10. Did the change make the file shorter, safer, more trusted, or more measurable?
+
+If not, slow down.
+
 ## My honest answer to "is this useful?"
 
 Yes, but only if it stays disciplined.
