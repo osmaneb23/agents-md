@@ -1471,6 +1471,280 @@ Before any release, ask:
 
 If not, slow down.
 
+## Third-pass trust and launch playbook
+
+This section focuses on what makes the project credible in public without adding product bloat.
+
+### Release trust is a product feature
+
+PyPI's Trusted Publishing docs recommend a dedicated GitHub Actions environment, job-level `id-token: write`, and the PyPA publish action. PyPI's security model also says publishing should be isolated to the smallest least-privileged workflow, and that the publishing job should ideally only retrieve distributions and publish them.
+
+Current state:
+
+- The project already uses Trusted Publishing.
+- The publish job has `id-token: write` only where needed.
+- Build and publish are separate jobs.
+- The environment is named `pypi`.
+
+Lean improvements:
+
+- Add a short release checklist to the repo.
+- Keep release workflow changes rare and reviewed.
+- Do not move build, test, and publish into one large job.
+- Consider environment required reviewers if more maintainers are added later.
+- Add a note that PyPI Trusted Publishing removes stored PyPI tokens, but does not make arbitrary workflow code safe.
+
+Source: https://docs.pypi.org/trusted-publishers/using-a-publisher/
+Source: https://docs.pypi.org/trusted-publishers/security-model/
+
+### Action pinning needs two layers
+
+GitHub's secure-use docs say pinning an action to a full-length commit SHA is the immutable option, while tag pinning is more convenient but mutable. That is one layer.
+
+The second layer for this repo is package pinning inside the composite action. A user can pin:
+
+- the action ref
+- the PyPI package version installed by the action
+
+Both matter because the composite action currently downloads Python code at run time.
+
+Lean policy:
+
+- README example may use a tag because it is easier for quick adoption.
+- SECURITY.md should recommend full SHA pinning for high-trust workflows.
+- `action.yml` should default to the matching `agent-context-md` version.
+- Release checklist should require updating the action default version.
+
+Source: https://docs.github.com/en/actions/reference/security/secure-use
+
+### Issue forms should create evidence, not bureaucracy
+
+GitHub issue forms support typed inputs, validations, labels, and required fields. That is useful here because detector bugs need structured reproduction data.
+
+Recommended forms:
+
+1. Wrong command generated.
+2. Missing command or convention.
+3. False-positive convention.
+4. Deduplication issue.
+5. Unsafe or confusing boundary.
+
+Required fields:
+
+- package version
+- command run
+- `--no-llm` or provider mode
+- smallest relevant file snippets
+- expected line
+- actual line
+- whether the line appears in README/docs already
+
+Anti-bloat rule:
+
+Do not add a general "feature request" template yet. Early feature requests should be discussed in normal issues so they can be challenged against the north star.
+
+Source: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+
+### Scorecard should be a maintenance check, not a vanity badge
+
+OpenSSF Scorecard has an official GitHub Action and is free for public repositories. It can push maintainers toward good defaults like security policies, pinned dependencies, token permissions, and CI tests.
+
+Lean use:
+
+- Add `SECURITY.md` first.
+- Add action/package pinning first.
+- Then run Scorecard manually or in a low-noise scheduled workflow.
+- Do not add a README badge until the project is happy with the score and willing to maintain it.
+
+Why:
+
+A badge that starts red creates pressure to add process for optics. A quiet scheduled check is better until the project has real users.
+
+Source: https://github.com/ossf/scorecard-action
+
+### Show HN should be treated as feedback intake
+
+Hacker News says Show HN is for something other people can try, and asks posters not to share signup pages, reading lists, or unfinished work that users cannot run. It also says not to ask friends to upvote or comment.
+
+This repo qualifies only if the package is installable, the GitHub repo is public, and the README lets a user try it quickly without an account. Those are now the right launch gates.
+
+Good submission title:
+
+> Show HN: agents-md - generate smaller AGENTS.md files for coding agents
+
+Good first comment:
+
+```text
+I built this after reading the ETH AGENTS.md evaluation, which found that generated context files can hurt agent success and increase inference cost when they repeat generic information.
+
+The tool tries to do the opposite: read README/docs first, remove duplicated facts, keep exact commands and repo-specific boundaries, and preserve manual notes on update.
+
+I would especially like feedback on repos where static mode misses a real convention or generates a line that should not be there.
+```
+
+Do not write:
+
+- "This improves agent performance."
+- "This understands your whole codebase."
+- "Please star the repo."
+- Any AI-generated comment reply.
+
+Source: https://news.ycombinator.com/showhn.html
+Source: https://news.ycombinator.com/newsguidelines.html
+
+### Codex for Open Source should support maintenance, not become the roadmap
+
+OpenAI describes Codex for OSS as support for maintainers of important open-source software, with possible ChatGPT Pro, API credits, and conditional Codex Security. The terms say Codex Security and API credits are optional additional benefits and may require separate review. They also say Codex Security should only be used on repositories or systems the applicant owns or is authorized to review.
+
+Practical answer:
+
+- API credits are useful for fixture evaluation, release automation, issue triage, and testing LLM synthesis on owned fixture repos.
+- Codex Security is worth requesting if it will be used for this repository's own supply-chain and code-security review.
+- It is not required for the project to function.
+- It should not be used to scan random user repositories.
+
+Lean usage plan:
+
+- Use credits to test generated output quality on fixture repos.
+- Use credits to summarize issue reports, not to auto-merge changes.
+- Use Codex Security, if granted, for this repo's workflows, packaging, and code.
+- Keep normal project operation offline and dependency-light.
+
+Source: https://developers.openai.com/codex/codex-for-oss-terms
+
+### Evidence ladder
+
+The project should earn stronger claims one rung at a time.
+
+Rung 1: Internal correctness.
+
+- Tests pass.
+- Build passes.
+- Generated AGENTS.md for this repo is short and lintable.
+- Update preserves manual notes.
+
+Allowed claim:
+
+> Generates focused AGENTS.md files from static repo signals.
+
+Rung 2: Fixture evidence.
+
+- Fixture corpus covers Python, JS/TS, Go, Rust, and monorepos.
+- Golden checks show no wrong commands.
+- Dedup examples prove README duplication is removed.
+
+Allowed claim:
+
+> On the fixture corpus, the generator keeps exact commands and removes obvious doc duplication.
+
+Rung 3: User-reported evidence.
+
+- Issues from real repos show detector misses and false positives.
+- Fixes include negative tests.
+- Changelog records what became more reliable.
+
+Allowed claim:
+
+> The detector set is improving against real repo reports.
+
+Rung 4: Agent-task evaluation.
+
+- Compare no context, hand-written context, static generated context, and LLM-synthesized context.
+- Include task success, steps, cost, and time.
+- Publish failures, not only wins.
+
+Allowed claim:
+
+> In this benchmark setup, this generated context helped or hurt by these measured amounts.
+
+Until rung 4 exists, do not claim performance improvement.
+
+### Maintainer time budget
+
+The project should stay maintainable by one person.
+
+Do not add features that create:
+
+- daily support load
+- hosted infrastructure
+- compatibility promises across every agent
+- runtime dependency upgrade churn
+- paid evaluation requirements
+- hidden state outside the repo
+
+Good one-person-maintainer features:
+
+- static detectors
+- JSON output
+- fixture tests
+- release checklist
+- issue forms
+- local explain command
+- local lint rules
+
+Bad one-person-maintainer features:
+
+- dashboard accounts
+- cloud storage
+- telemetry
+- multi-agent orchestration
+- scheduled hosted scans
+- automatic PR comments
+- model marketplace integration
+
+### First ten issues policy
+
+The first ten external issues will shape the project. Treat them as product research.
+
+For each issue, classify it as:
+
+- wrong generated command
+- missing high-signal command
+- false-positive convention
+- missing high-signal convention
+- README/docs dedup miss
+- update safety issue
+- packaging/install issue
+- action/CI issue
+- unclear docs
+- out-of-scope feature request
+
+Resolution rules:
+
+- Wrong command: fix before new features.
+- Update safety issue: fix before new features.
+- Install/package issue: fix before new features.
+- False positive: add negative fixture before release.
+- Missing convention: accept only if it prevents a plausible agent mistake.
+- Out-of-scope request: explain the anti-bloat reason and close politely.
+
+### What the project should be in six months
+
+Strong version:
+
+- A small Python CLI.
+- Published package with clean release hygiene.
+- Offline first-run experience.
+- Clear `explain` output.
+- Fixture-backed detectors.
+- Honest score.
+- No runtime dependencies.
+- Small AGENTS.md files.
+- A SECURITY.md and issue forms.
+- A reputation for saying "no" to bloated context.
+
+Weak version:
+
+- A broad AI repo-understanding product.
+- Multiple output formats before AGENTS.md is excellent.
+- Memory directories.
+- Hosted dashboards.
+- Claims that are stronger than evidence.
+- Heavy parsers and SDKs in the core install.
+- Generated architecture summaries users do not trust.
+
+The strong version is smaller and more defensible.
+
 ## My honest answer to "is this useful?"
 
 Yes, but only if it stays disciplined.
