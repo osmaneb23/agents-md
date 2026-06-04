@@ -48,6 +48,28 @@ demo = "demo:main"
     assert "not scored in dry-run" not in captured.out
 
 
+def test_init_verbose_prints_warnings_without_generated_section(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "package.json").write_text(
+        """{
+  "scripts": {
+    "test": "node --test"
+  }
+}
+""",
+        encoding="utf-8",
+    )
+
+    code = main(["init", "--no-llm", "--dry-run", "--no-symlink", "--verbose"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "Warnings:" in captured.err
+    assert "js-package-manager-fallback" in captured.err
+    assert "no-single-test" in captured.err
+    assert "## Warnings" not in captured.out
+
+
 def test_lint_check_threshold(tmp_path: Path) -> None:
     agents = tmp_path / "AGENTS.md"
     agents.write_text("# AGENTS.md\n\nToo short.\n", encoding="utf-8")

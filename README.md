@@ -199,11 +199,11 @@ Fail PRs when the score drops below a threshold:
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.6
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.7
   with:
     path: AGENTS.md
     threshold: "70"
-    version: "0.1.6"
+    version: "0.1.7"
 ```
 
 The action installs the pinned `agent-context-md` package version from the `version` input. Pin to a release tag in normal workflows; security-sensitive workflows can pin the action to a full commit SHA.

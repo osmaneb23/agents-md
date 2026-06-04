@@ -12,7 +12,7 @@ inputs:
   version:
     description: agent-context-md package version to install
     required: false
-    default: "0.1.6"
+    default: "0.1.7"
 runs:
   using: composite
   steps:

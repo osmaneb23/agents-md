@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .dedup import read_markdown_facts
-from .types import CommandFact, ConventionFact, ScanResult, StackFact
+from .types import CommandFact, ConventionFact, ScanResult, ScanWarning, StackFact
 
 SKIP_DIRS = {
     ".git",
@@ -66,6 +66,7 @@ def scan_repo(root: Path, output_name: str = "AGENTS.md") -> ScanResult:
     _scan_task_files(root, result)
     _scan_conventions(root, result)
     _dedupe_facts(result)
+    _scan_warnings(root, result)
     # Keep markdown_facts reachable for verbose diagnostics without exposing it
     # as a public model field.
     setattr(result, "_markdown_facts", markdown_facts)
@@ -76,6 +77,62 @@ def _dedupe_facts(result: ScanResult) -> None:
     result.stack = list(dict.fromkeys(result.stack))
     result.commands = list(dict.fromkeys(result.commands))
     result.conventions = list(dict.fromkeys(result.conventions))
+    result.warnings = list(dict.fromkeys(result.warnings))
+
+
+def _scan_warnings(root: Path, result: ScanResult) -> None:
+    js_managers = _js_package_manager_candidates(root, _read_json(root / "package.json"))
+    py_managers = _python_package_manager_candidates(root)
+    _append_warning_if_multiple(result, "multiple-js-package-managers", js_managers, "JavaScript package managers")
+    _append_warning_if_multiple(result, "multiple-python-package-managers", py_managers, "Python package managers")
+
+    if (root / "package.json").is_file() and not js_managers:
+        result.warnings.append(
+            ScanWarning(
+                "js-package-manager-fallback",
+                "No JS package manager lockfile or packageManager field detected; npm command prefixes are fallback guesses.",
+                "package.json",
+            )
+        )
+    if not result.commands:
+        result.warnings.append(
+            ScanWarning(
+                "no-commands",
+                "No high-confidence project commands detected; generated commands will need manual edits before relying on them.",
+            )
+        )
+    has_test = any(command.category == "test" for command in result.commands)
+    has_single = any(command.category == "single-test" for command in result.commands)
+    if has_test and not has_single:
+        result.warnings.append(
+            ScanWarning(
+                "no-single-test",
+                "A test command was detected, but no file/function-targeted single-test command was inferred.",
+            )
+        )
+    placeholder_sources = sorted(
+        {command.source for command in result.commands if re.search(r"<[^>]+>", command.command)}
+    )
+    if placeholder_sources:
+        result.warnings.append(
+            ScanWarning(
+                "command-placeholders",
+                "Some inferred commands still contain placeholders; replace them with real file/function targets when possible.",
+                ", ".join(placeholder_sources[:3]),
+            )
+        )
+
+
+def _append_warning_if_multiple(result: ScanResult, code: str, managers: list[str], label: str) -> None:
+    unique = sorted(set(managers))
+    if len(unique) > 1:
+        result.warnings.append(
+            ScanWarning(
+                code,
+                f"Multiple {label} detected; verify generated command prefixes before committing.",
+                ", ".join(unique),
+            )
+        )
 
 
 def _scan_general(root: Path, result: ScanResult) -> None:
@@ -365,6 +422,23 @@ def _detect_js_package_manager(root: Path, package_json: dict[str, Any]) -> tupl
     return None
 
 
+def _js_package_manager_candidates(root: Path, package_json: Any) -> list[str]:
+    candidates: list[str] = []
+    for filename, manager in (
+        ("pnpm-lock.yaml", "pnpm"),
+        ("yarn.lock", "yarn"),
+        ("bun.lockb", "bun"),
+        ("package-lock.json", "npm"),
+    ):
+        if (root / filename).is_file():
+            candidates.append(manager)
+    if isinstance(package_json, dict):
+        package_manager = package_json.get("packageManager")
+        if isinstance(package_manager, str) and "@" in package_manager:
+            candidates.append(package_manager.split("@", 1)[0])
+    return candidates
+
+
 def _detect_python_package_manager(root: Path, has_pyproject: bool) -> str | None:
     for filename, manager in (
         ("pixi.toml", "Pixi"),
@@ -376,6 +450,20 @@ def _detect_python_package_manager(root: Path, has_pyproject: bool) -> str | Non
         if (root / filename).is_file():
             return manager
     return "pip" if has_pyproject else None
+
+
+def _python_package_manager_candidates(root: Path) -> list[str]:
+    candidates: list[str] = []
+    for filename, manager in (
+        ("pixi.toml", "Pixi"),
+        ("uv.lock", "uv"),
+        ("poetry.lock", "Poetry"),
+        ("Pipfile", "Pipenv"),
+        ("requirements.txt", "pip"),
+    ):
+        if (root / filename).is_file():
+            candidates.append(manager)
+    return candidates
 
 
 def _package_manager_version(package_json: dict[str, Any], manager: str) -> str | None:

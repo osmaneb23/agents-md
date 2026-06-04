@@ -37,6 +37,13 @@ class ConventionFact:
     source: str
 
 
+@dataclass(frozen=True)
+class ScanWarning:
+    code: str
+    message: str
+    source: str | None = None
+
+
 @dataclass
 class DedupLog:
     removed: list[str] = field(default_factory=list)
@@ -52,6 +59,7 @@ class ScanResult:
     stack: list[StackFact] = field(default_factory=list)
     commands: list[CommandFact] = field(default_factory=list)
     conventions: list[ConventionFact] = field(default_factory=list)
+    warnings: list[ScanWarning] = field(default_factory=list)
     monorepo: bool = False
     docs_read: list[str] = field(default_factory=list)
     dedup: DedupLog = field(default_factory=DedupLog)

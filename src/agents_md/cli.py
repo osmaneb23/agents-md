@@ -260,6 +260,11 @@ def _print_scan(scan) -> None:
         print(f"  - {command.category}: {command.command} ({command.source})", file=sys.stderr)
     if scan.docs_read:
         print(f"Docs read for dedup: {', '.join(scan.docs_read)}", file=sys.stderr)
+    if scan.warnings:
+        print("Warnings:", file=sys.stderr)
+        for warning in scan.warnings:
+            source = f" ({warning.source})" if warning.source else ""
+            print(f"  - {warning.code}: {warning.message}{source}", file=sys.stderr)
 
 
 def _print_dedup(scan) -> None:

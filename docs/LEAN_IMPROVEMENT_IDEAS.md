@@ -725,7 +725,7 @@ Definition of done:
 
 1. Add fixture repos.
 2. Add `agents-md explain`.
-3. Add warning objects.
+3. Add warning objects. Done in the v0.1.7 release line.
 4. Add `lint --fail-on-placeholder`.
 5. Publish a small "what it generates on fixture repos" docs page.
 
@@ -1254,6 +1254,12 @@ Implementation:
 - Add `ScanWarning(code, message, source=None)`.
 - Populate warnings for no package manager, no single test, multiple package managers, placeholders, no commands.
 - Print in `--verbose` and later `explain`.
+
+Implementation status:
+
+- Done in the v0.1.7 release line.
+- Warnings are stored on `ScanResult` and printed only by verbose CLI diagnostics.
+- Generated AGENTS.md content remains unchanged.
 
 Acceptance:
 

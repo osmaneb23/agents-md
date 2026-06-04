@@ -30,6 +30,19 @@ def test_scans_package_json_commands(tmp_path: Path) -> None:
     assert any(fact.name == "Vite" for fact in result.stack)
 
 
+def test_scan_warns_for_multiple_js_package_managers(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(
+        json.dumps({"packageManager": "pnpm@10.0.0", "scripts": {"test": "vitest run"}}),
+        encoding="utf-8",
+    )
+    (tmp_path / "pnpm-lock.yaml").write_text("", encoding="utf-8")
+    (tmp_path / "package-lock.json").write_text("{}", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+
+    assert any(warning.code == "multiple-js-package-managers" for warning in result.warnings)
+
+
 def test_rendered_document_has_managed_sections(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text(
         """[project]
