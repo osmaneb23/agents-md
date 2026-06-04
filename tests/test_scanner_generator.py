@@ -198,6 +198,25 @@ def test_api_wrapper_detection_uses_repo_relative_path(tmp_path: Path) -> None:
     assert "HTTP calls appear centralized" not in conventions
 
 
+def test_api_wrapper_detection_ignores_one_off_feature_fetch(tmp_path: Path) -> None:
+    source = tmp_path / "src" / "features" / "users"
+    source.mkdir(parents=True)
+    (tmp_path / "package.json").write_text(json.dumps({"dependencies": {"typescript": "^5.0.0"}}), encoding="utf-8")
+    (source / "loadUser.ts").write_text(
+        """export async function getUser(id: string) {
+  const response = await fetch(`/users/${id}`)
+  return response.json()
+}
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repo(tmp_path)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "HTTP calls appear centralized" not in conventions
+
+
 def test_api_wrapper_detection_handles_root_api_directory(tmp_path: Path) -> None:
     api = tmp_path / "api"
     api.mkdir()
@@ -208,6 +227,26 @@ def test_api_wrapper_detection_handles_root_api_directory(tmp_path: Path) -> Non
     conventions = "\n".join(convention.text for convention in result.conventions)
 
     assert "HTTP calls appear centralized" in conventions
+
+
+def test_javascript_conventions_ignore_tests_generated_and_declarations(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(json.dumps({"dependencies": {"typescript": "^5.0.0"}}), encoding="utf-8")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "helper.test.ts").write_text("export const helper = () => 'test'\n", encoding="utf-8")
+    generated = tmp_path / "src" / "generated"
+    generated.mkdir(parents=True)
+    (generated / "client.ts").write_text(
+        "export type Result<T, E> = { ok: true; value: T } | { ok: false; error: E }\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "src" / "types.d.ts").write_text("export default interface Generated {}\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "named exports" not in conventions
+    assert "Result<...>" not in conventions
 
 
 def test_ignores_vendor_when_detecting_conventions(tmp_path: Path) -> None:
@@ -224,6 +263,56 @@ def test_ignores_vendor_when_detecting_conventions(tmp_path: Path) -> None:
 
     assert "named exports" in conventions
     assert "default exports" in conventions
+
+
+def test_python_error_convention_ignores_test_helpers(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+""",
+        encoding="utf-8",
+    )
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_errors.py").write_text(
+        """class FakeError(Exception):
+    pass
+
+
+def test_error():
+    assert FakeError
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repo(tmp_path)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "Custom Python error class detected" not in conventions
+
+
+def test_python_error_convention_keeps_source_errors(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+""",
+        encoding="utf-8",
+    )
+    source = tmp_path / "src" / "demo"
+    source.mkdir(parents=True)
+    (source / "errors.py").write_text(
+        """class DomainError(RuntimeError):
+    pass
+""",
+        encoding="utf-8",
+    )
+
+    result = scan_repo(tmp_path)
+    conventions = "\n".join(convention.text for convention in result.conventions)
+
+    assert "Custom Python error class detected: `DomainError`" in conventions
 
 
 def test_dedup_skips_claude_symlink_to_agents(tmp_path: Path) -> None:

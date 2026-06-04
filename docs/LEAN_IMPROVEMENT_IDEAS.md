@@ -712,7 +712,7 @@ Better phrasing:
 2. Refresh fingerprints for all high-signal generation inputs.
 3. Prevent `update` LLM synthesis from touching manual content.
 4. Score dry-run output.
-5. Add a few more negative tests for false-positive conventions.
+5. Add a few more negative tests for false-positive conventions. Done in the v0.1.6 release line.
 
 Definition of done:
 

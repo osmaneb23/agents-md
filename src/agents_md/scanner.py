@@ -41,6 +41,16 @@ PY_FRAMEWORKS = ("fastapi", "flask", "django", "starlette")
 PY_LINTERS = ("ruff", "black", "flake8", "pylint")
 PY_TYPECHECKERS = ("mypy", "pyright")
 RISKY_COMMAND_RE = re.compile(r"\b(migrate|migration|alembic|prisma|db:|database|reset|seed)\b", re.I)
+LOW_SIGNAL_CONVENTION_DIRS = {
+    "__generated__",
+    "__tests__",
+    "gen",
+    "generated",
+    "spec",
+    "specs",
+    "test",
+    "tests",
+}
 
 
 def scan_repo(root: Path, output_name: str = "AGENTS.md") -> ScanResult:
@@ -246,13 +256,19 @@ def _scan_conventions(root: Path, result: ScanResult) -> None:
     _scan_test_data_conventions(root, result)
 
     for py_file in _iter_source_files(root, (".py",), limit=80):
+        if _is_low_signal_convention_file(py_file, root):
+            continue
         for class_name in _python_error_classes(py_file):
             result.conventions.append(ConventionFact(f"Custom Python error class detected: `{class_name}`.", py_file.relative_to(root).as_posix()))
             return
 
 
 def _scan_javascript_conventions(root: Path, result: ScanResult, tsconfig: Any) -> None:
-    files = _iter_source_files(root, JS_SOURCE_SUFFIXES, limit=160)
+    files = [
+        path
+        for path in _iter_source_files(root, JS_SOURCE_SUFFIXES, limit=160)
+        if not _is_low_signal_convention_file(path, root)
+    ]
     if not files:
         return
 
@@ -397,8 +413,23 @@ def _looks_like_api_wrapper(path: Path, root: Path, text: str) -> bool:
     path_signal = any(part.lower() in {"api", "client", "http", "services"} for part in rel_parts[:-1])
     path_signal = path_signal or any(token in path_text for token in ("/api/", "/client/", "/http/", "/services/"))
     call_signal = bool(re.search(r"\b(fetch|axios\.create|ky\.create|got\.extend)\s*\(", text))
-    wrapper_signal = bool(re.search(r"\b(?:export\s+)?(?:async\s+)?function\s+\w*(?:fetch|request|client|get|post)\w*\b", text))
-    return call_signal and (name_signal or path_signal or wrapper_signal)
+    return call_signal and (name_signal or path_signal)
+
+
+def _is_low_signal_convention_file(path: Path, root: Path) -> bool:
+    try:
+        rel_parts = tuple(part.lower() for part in path.relative_to(root).parts)
+    except ValueError:
+        rel_parts = tuple(part.lower() for part in path.parts)
+    name = path.name.lower()
+    return (
+        any(part in LOW_SIGNAL_CONVENTION_DIRS for part in rel_parts[:-1])
+        or name.startswith("test_")
+        or name.endswith("_test.py")
+        or ".test." in name
+        or ".spec." in name
+        or name.endswith(".d.ts")
+    )
 
 
 def _python_project_script(pyproject: dict[str, Any]) -> str | None:
