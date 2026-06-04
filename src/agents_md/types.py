@@ -48,6 +48,7 @@ class DedupLog:
 @dataclass
 class ScanResult:
     root: Path
+    output_name: str = "AGENTS.md"
     stack: list[StackFact] = field(default_factory=list)
     commands: list[CommandFact] = field(default_factory=list)
     conventions: list[ConventionFact] = field(default_factory=list)

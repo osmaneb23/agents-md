@@ -6,9 +6,13 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .dedup import iter_markdown_docs
+
 FINGERPRINT_RE = re.compile(r"<!-- agents-md:fingerprint (?P<payload>\{.*?\}) -->")
 
 KEY_NAMES = {
+    ".env.example",
+    ".env.sample",
     "package.json",
     "pnpm-lock.yaml",
     "yarn.lock",
@@ -34,24 +38,37 @@ KEY_NAMES = {
     "nx.json",
     "turbo.json",
     "lerna.json",
+    "example.env",
 }
 
 
-def iter_key_files(root: Path) -> list[Path]:
+def iter_key_files(root: Path, output_name: str = "AGENTS.md") -> list[Path]:
     files: list[Path] = []
+    seen: set[str] = set()
+
+    def add(path: Path) -> None:
+        rel = path.relative_to(root).as_posix()
+        if rel in seen:
+            return
+        seen.add(rel)
+        files.append(path)
+
+    for path in iter_markdown_docs(root, output_name):
+        add(path)
     for name in sorted(KEY_NAMES):
         path = root / name
         if path.is_file():
-            files.append(path)
+            add(path)
     workflows = root / ".github" / "workflows"
     if workflows.is_dir():
-        files.extend(sorted(p for p in workflows.rglob("*") if p.is_file()))
-    return files
+        for path in sorted(p for p in workflows.rglob("*") if p.is_file()):
+            add(path)
+    return sorted(files, key=lambda path: path.relative_to(root).as_posix())
 
 
-def fingerprint_repo(root: Path) -> dict[str, Any]:
+def fingerprint_repo(root: Path, output_name: str = "AGENTS.md") -> dict[str, Any]:
     entries: dict[str, str] = {}
-    for path in iter_key_files(root):
+    for path in iter_key_files(root, output_name):
         rel = path.relative_to(root).as_posix()
         entries[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
     return {"version": 1, "files": entries}

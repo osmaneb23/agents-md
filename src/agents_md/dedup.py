@@ -15,7 +15,7 @@ def normalize_fact(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def read_markdown_facts(root: Path, output_name: str = "AGENTS.md") -> tuple[set[str], list[str]]:
+def iter_markdown_docs(root: Path, output_name: str = "AGENTS.md") -> list[Path]:
     paths: list[Path] = []
     output_path = (root / output_name).resolve()
     for path in root.glob("*.md"):
@@ -27,10 +27,13 @@ def read_markdown_facts(root: Path, output_name: str = "AGENTS.md") -> tuple[set
     docs = root / "docs"
     if docs.is_dir():
         paths.extend(sorted(docs.rglob("*.md")))
+    return sorted(paths)
 
+
+def read_markdown_facts(root: Path, output_name: str = "AGENTS.md") -> tuple[set[str], list[str]]:
     facts: set[str] = set()
     docs_read: list[str] = []
-    for path in sorted(paths):
+    for path in iter_markdown_docs(root, output_name):
         try:
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:

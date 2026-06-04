@@ -33,7 +33,7 @@ def render_document(scan: ScanResult, *, no_dedup: bool = False) -> str:
                 "",
             ]
         )
-    lines.append(encode_fingerprint(fingerprint_repo(scan.root)))
+    lines.append(encode_fingerprint(fingerprint_repo(scan.root, output_name=scan.output_name)))
     return "\n".join(lines).rstrip() + "\n"
 
 

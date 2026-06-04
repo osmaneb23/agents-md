@@ -199,11 +199,11 @@ Fail PRs when the score drops below a threshold:
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.3
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.1.4
   with:
     path: AGENTS.md
     threshold: "70"
-    version: "0.1.3"
+    version: "0.1.4"
 ```
 
 The action installs the pinned `agent-context-md` package version from the `version` input. Pin to a release tag in normal workflows; security-sensitive workflows can pin the action to a full commit SHA.
@@ -236,7 +236,7 @@ Package manager detected from lock files, never guessed. Framework, language, Ty
 <details>
 <summary><strong>Fingerprint</strong></summary>
 
-SHA-256 hashes of key manifests stored in a comment at the bottom of the file. `agents-md diff` compares them against the current state and tells you whether an update is worth running.
+SHA-256 hashes of key generation inputs stored in a comment at the bottom of the file. `agents-md diff` tracks manifests, workflows, README/docs, and env examples so it can tell you whether an update is worth running.
 
 </details>
 

@@ -162,6 +162,49 @@ requires-python = ">=3.11"
     assert compare_fingerprints(refreshed, fingerprint_repo(tmp_path))["changed"] == []
 
 
+def test_diff_reports_readme_generation_input_change(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "README.md").write_text("# Demo\n\nRun tests.\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+requires-python = ">=3.11"
+""",
+        encoding="utf-8",
+    )
+    assert main(["init", "--no-llm", "--force", "--no-symlink"]) == 0
+    capsys.readouterr()
+    (tmp_path / "README.md").write_text("# Demo\n\nRun `python -m pytest -q`.\n", encoding="utf-8")
+
+    code = main(["diff", "AGENTS.md"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "changed: README.md" in captured.out
+    assert "Recommendation: run `agents-md update` to sync managed sections." in captured.out
+
+
+def test_diff_reports_no_generation_input_changes(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        """[project]
+name = "demo"
+version = "0.1.0"
+requires-python = ">=3.11"
+""",
+        encoding="utf-8",
+    )
+    assert main(["init", "--no-llm", "--force", "--no-symlink"]) == 0
+    capsys.readouterr()
+
+    code = main(["diff", "AGENTS.md"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "No relevant generation input changes detected." in captured.out
+
+
 def test_requested_provider_without_key_reports_specific_env_var(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)

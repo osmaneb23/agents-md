@@ -45,7 +45,7 @@ RISKY_COMMAND_RE = re.compile(r"\b(migrate|migration|alembic|prisma|db:|database
 
 def scan_repo(root: Path, output_name: str = "AGENTS.md") -> ScanResult:
     root = root.resolve()
-    result = ScanResult(root=root)
+    result = ScanResult(root=root, output_name=output_name)
     markdown_facts, docs_read = read_markdown_facts(root, output_name)
     result.docs_read = docs_read
     _scan_general(root, result)

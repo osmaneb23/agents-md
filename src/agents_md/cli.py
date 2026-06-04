@@ -150,7 +150,7 @@ def cmd_update(args: argparse.Namespace) -> int:
     scan = scan_repo(path.parent.resolve(), output_name=path.name)
     sections = render_sections(scan, no_dedup=args.no_dedup)
     updated, changed = replace_managed_sections(existing, sections)
-    current_fingerprint = encode_fingerprint(fingerprint_repo(path.parent.resolve()))
+    current_fingerprint = encode_fingerprint(fingerprint_repo(path.parent.resolve(), output_name=path.name))
     if "agents-md:fingerprint" in updated:
         refreshed = FINGERPRINT_RE.sub(current_fingerprint, updated)
         if refreshed != updated:
@@ -208,14 +208,14 @@ def cmd_diff(args: argparse.Namespace) -> int:
     if not old:
         print("No fingerprint found. Run `agents-md init` or `agents-md update --init-fingerprint`.")
         return 1
-    current = fingerprint_repo(path.parent.resolve())
+    current = fingerprint_repo(path.parent.resolve(), output_name=path.name)
     diff = compare_fingerprints(old, current)
     for label in ("added", "removed", "changed"):
         values = diff[label]
         if values:
             print(f"{label}: {', '.join(values)}")
     if not diff["added"] and not diff["removed"] and not diff["changed"]:
-        print("No relevant manifest/config changes detected.")
+        print("No relevant generation input changes detected.")
     else:
         print("Recommendation: run `agents-md update` to sync managed sections.")
     return 0

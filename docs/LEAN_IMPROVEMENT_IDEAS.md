@@ -127,11 +127,11 @@ Do not build:
 
 ### 2. Fingerprint all inputs that affect generated output
 
-Current state:
+Status:
 
-- Fingerprints include key manifests and workflow files.
-- Generated output also depends on README/docs facts, `.env.example`, some source files, test paths, and config files used by convention detection.
-- If those change, `agents-md diff` may say nothing relevant changed even though an update would produce different output.
+- Fixed in the v0.1.4 release line for README/docs and env examples.
+- Fingerprints include selected manifests, workflow files, root Markdown docs except generated output/aliases, `docs/**/*.md`, and env example files.
+- Future source-derived convention inputs may still need more selective fingerprinting.
 
 Why this matters:
 
@@ -1185,12 +1185,12 @@ Files:
 - `src/agents_md/dedup.py` if sharing doc discovery
 - `tests/test_cli.py` or `tests/test_scanner_generator.py`
 
-Implementation:
+Implementation status:
 
-- Add root Markdown docs except output file and symlink aliases.
-- Add `docs/**/*.md`.
-- Add `.env.example`, `.env.sample`, `example.env`.
-- Keep stable sorted ordering.
+- Done in the v0.1.4 release line.
+- Root Markdown docs are included except the output file and symlink aliases.
+- `docs/**/*.md`, `.env.example`, `.env.sample`, and `example.env` are included.
+- Ordering is stable and duplicate paths are ignored.
 
 Acceptance:
 
