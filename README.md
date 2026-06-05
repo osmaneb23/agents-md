@@ -274,6 +274,8 @@ The project's own [AGENTS.md](AGENTS.md) has the authoritative commands, convent
 
 Fixture sanity results live in [docs/FIXTURE_REPORT.md](docs/FIXTURE_REPORT.md).
 
+Report vulnerabilities through [SECURITY.md](SECURITY.md).
+
 Before changing scoring weights, deduplication rules, or managed marker formats, open an issue. These are product decisions, not implementation details.
 
 Releases go through PyPI Trusted Publishing via `.github/workflows/publish.yml`. To publish: set up a pending publisher for project `agent-context-md`, repository `osmaneb23/agents-md`, workflow `publish.yml`, environment `pypi`, then run the publish workflow.

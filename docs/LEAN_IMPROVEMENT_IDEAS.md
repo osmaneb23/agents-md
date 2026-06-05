@@ -1367,6 +1367,8 @@ These are not product features, but they make the project look safer and easier 
 
 ### Add `SECURITY.md`
 
+Status: done in root `SECURITY.md`.
+
 Keep it short:
 
 - supported versions
@@ -1378,10 +1380,13 @@ Why:
 
 Open-source users look for a vulnerability reporting path. OpenSSF Scorecard also recognizes a security policy.
 
+Remaining lean follow-up: enable GitHub private vulnerability reporting when the maintainer is ready to accept reports privately. The policy currently avoids claiming that private reporting is enabled.
+
 ### Add focused issue templates
 
 Templates:
 
+- security contact request with no exploit details
 - wrong generated command
 - false-positive convention
 - missing convention
@@ -1577,7 +1582,7 @@ OpenSSF Scorecard has an official GitHub Action and is free for public repositor
 
 Lean use:
 
-- Add `SECURITY.md` first.
+- Keep root `SECURITY.md`.
 - Add action/package pinning first.
 - Then run Scorecard manually or in a low-noise scheduled workflow.
 - Do not add a README badge until the project is happy with the score and willing to maintain it.

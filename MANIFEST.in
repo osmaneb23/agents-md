@@ -1,5 +1,6 @@
 include AGENTS.md
 include CONTRIBUTING.md
+include SECURITY.md
 recursive-include .github/actions *.yml
 recursive-include .github/ISSUE_TEMPLATE *.md
 recursive-include .github/workflows *.yml
