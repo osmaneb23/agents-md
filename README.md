@@ -202,11 +202,11 @@ Fail PRs when the score drops below a threshold:
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.2.2
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.2.3
   with:
     path: AGENTS.md
     threshold: "70"
-    version: "0.2.2"
+    version: "0.2.3"
     fail-on-placeholder: "true"
     max-lines: "150"
     max-bytes: "32000"
