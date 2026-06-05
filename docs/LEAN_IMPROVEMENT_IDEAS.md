@@ -592,6 +592,13 @@ Do not build:
 
 ### J. Add `--max-lines` and `--max-bytes`
 
+Status:
+
+- Done in the v0.2.2 release line.
+- The gates are optional and do not change the quality score.
+- `QualityResult` reports both line and byte count.
+- The reusable GitHub Action exposes matching optional inputs.
+
 Problem:
 
 Codex has a default project-doc byte cap. Line count is helpful, but bytes are the actual prompt input concern.

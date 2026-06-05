@@ -110,6 +110,37 @@ def test_lint_fail_on_placeholder_exits_nonzero(tmp_path: Path, capsys) -> None:
     assert "Replace placeholder guidance" in captured.err
 
 
+def test_lint_max_size_gates_exit_nonzero_without_lowering_score(tmp_path: Path, capsys) -> None:
+    agents = tmp_path / "AGENTS.md"
+    agents.write_text(
+        """# AGENTS.md
+
+## Commands
+- install: `python -m pip install -e .[dev]`
+- test: `python -m pytest -x`
+
+## Testing
+- Single test: `python -m pytest tests/test_cli.py::test_lint_max_size_gates_exit_nonzero_without_lowering_score -xvs`
+
+## Boundaries
+### Always Do
+- Run focused tests.
+### Ask First
+- Ask before migrations.
+### Never Do
+- Never commit secrets.
+""",
+        encoding="utf-8",
+    )
+
+    code = main(["lint", str(agents), "--check", "--threshold", "1", "--max-lines", "5", "--max-bytes", "40"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "maximum is 5" in captured.err
+    assert "maximum is 40" in captured.err
+
+
 def test_init_merge_preserves_hand_written_file(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "pyproject.toml").write_text(
@@ -308,6 +339,8 @@ def test_explain_json_reports_scan_without_writing(tmp_path: Path, monkeypatch, 
     assert any(warning["code"] == "js-package-manager-fallback" for warning in report["warnings"])
     assert report["dedup_removed"]
     assert isinstance(report["quality_score"], int)
+    assert isinstance(report["byte_count"], int)
+    assert report["byte_count"] > 0
 
 
 def test_requested_provider_without_key_reports_specific_env_var(tmp_path: Path, monkeypatch, capsys) -> None:

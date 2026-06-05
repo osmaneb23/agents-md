@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agents_md.quality import lint_file, lint_text, placeholder_issues
+from agents_md.quality import lint_file, lint_text, placeholder_issues, size_gate_issues
 
 
 def test_scores_core_sections(tmp_path: Path) -> None:
@@ -151,6 +151,7 @@ def test_lint_text_matches_lint_file_with_root(tmp_path: Path) -> None:
 
     assert text_result.score == file_result.score
     assert text_result.breakdown == file_result.breakdown
+    assert text_result.byte_count == file_result.byte_count
     assert [issue.kind for issue in text_result.issues] == [issue.kind for issue in file_result.issues]
 
 
@@ -169,3 +170,30 @@ def test_placeholder_issues_detect_command_templates_and_default_guidance() -> N
 
     assert [issue.kind for issue in issues] == ["placeholder", "placeholder", "placeholder"]
     assert [issue.line for issue in issues] == [5, 6, 7]
+
+
+def test_size_gate_issues_do_not_change_score() -> None:
+    text = """# AGENTS.md
+
+## Commands
+- install: `python -m pip install -e .[dev]`
+- test: `python -m pytest -x`
+
+## Testing
+- Single test: `python -m pytest tests/test_quality.py::test_size_gate_issues_do_not_change_score -xvs`
+
+## Boundaries
+### Always Do
+- Run focused tests.
+### Ask First
+- Ask before migrations.
+### Never Do
+- Never commit secrets.
+"""
+
+    result = lint_text(text)
+    issues = size_gate_issues(result, max_lines=5, max_bytes=40)
+
+    assert result.score >= 70
+    assert result.byte_count == len(text.encode("utf-8"))
+    assert [issue.kind for issue in issues] == ["max-lines", "max-bytes"]

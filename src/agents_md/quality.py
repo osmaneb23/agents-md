@@ -24,12 +24,14 @@ class QualityResult:
     breakdown: list[str] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
     line_count: int = 0
+    byte_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "score": self.score,
             "verdict": self.verdict,
             "line_count": self.line_count,
+            "byte_count": self.byte_count,
             "breakdown": self.breakdown,
             "issues": [issue.__dict__ for issue in self.issues],
         }
@@ -127,11 +129,24 @@ def lint_text(text: str, *, root: Path | None = None) -> QualityResult:
         breakdown.append("No linter-owned rules: +5")
 
     score = max(0, min(100, score))
-    return QualityResult(score=score, verdict=_verdict(score), breakdown=breakdown, issues=issues, line_count=len(lines))
+    return QualityResult(
+        score=score,
+        verdict=_verdict(score),
+        breakdown=breakdown,
+        issues=issues,
+        line_count=len(lines),
+        byte_count=len(text.encode("utf-8")),
+    )
 
 
 def format_human(result: QualityResult) -> str:
-    parts = [f"Score: {result.score}/100", result.verdict, "", "Breakdown:"]
+    parts = [
+        f"Score: {result.score}/100",
+        result.verdict,
+        f"Size: {result.line_count} lines, {result.byte_count} bytes",
+        "",
+        "Breakdown:",
+    ]
     parts.extend(f"- {item}" for item in result.breakdown)
     if result.issues:
         parts.extend(["", "Issues:"])
@@ -153,6 +168,15 @@ def placeholder_issues(text: str) -> list[Issue]:
             continue
         if ANGLE_PLACEHOLDER_RE.search(stripped) or TEXT_PLACEHOLDER_RE.search(stripped):
             issues.append(Issue(index, "Replace placeholder guidance with an exact repo-specific command.", "placeholder"))
+    return issues
+
+
+def size_gate_issues(result: QualityResult, *, max_lines: int | None = None, max_bytes: int | None = None) -> list[Issue]:
+    issues: list[Issue] = []
+    if max_lines is not None and result.line_count > max_lines:
+        issues.append(Issue(1, f"File has {result.line_count} lines; maximum is {max_lines}.", "max-lines"))
+    if max_bytes is not None and result.byte_count > max_bytes:
+        issues.append(Issue(1, f"File has {result.byte_count} bytes; maximum is {max_bytes}.", "max-bytes"))
     return issues
 
 

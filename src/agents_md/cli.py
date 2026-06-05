@@ -10,7 +10,7 @@ from . import __version__
 from .fingerprint import FINGERPRINT_RE, compare_fingerprints, encode_fingerprint, extract_fingerprint, fingerprint_repo
 from .generator import has_managed_sections, line_count, render_document, render_sections, replace_managed_sections
 from .llm import LlmError, detect_provider, missing_key_message, synthesize_with_llm
-from .quality import apply_fix, format_human, format_json, lint_file, lint_text, placeholder_issues
+from .quality import apply_fix, format_human, format_json, lint_file, lint_text, placeholder_issues, size_gate_issues
 from .scanner import scan_repo
 
 
@@ -62,6 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
     lint.add_argument("path", nargs="?", default="AGENTS.md")
     lint.add_argument("--check", action="store_true", help="Exit non-zero if score is below threshold.")
     lint.add_argument("--threshold", type=int, default=60, help="Minimum score for --check.")
+    lint.add_argument("--max-lines", type=_positive_int, help="Exit non-zero if the file has more than this many lines.")
+    lint.add_argument("--max-bytes", type=_positive_int, help="Exit non-zero if the file has more than this many bytes.")
     lint.add_argument("--fix", action="store_true", help="Remove duplicate/style-rule lines after confirmation.")
     lint.add_argument("--yes", action="store_true", help="Confirm --fix without prompting.")
     lint.add_argument("--fail-on-placeholder", action="store_true", help="Exit non-zero if placeholder commands remain.")
@@ -193,10 +195,11 @@ def cmd_lint(args: argparse.Namespace) -> int:
         return 1
     result = lint_file(path)
     placeholders = placeholder_issues(path.read_text(encoding="utf-8")) if args.fail_on_placeholder else []
+    size_issues = size_gate_issues(result, max_lines=args.max_lines, max_bytes=args.max_bytes)
     if args.fix:
         if not result.issues:
             print("No auto-fixable issues detected.")
-            return 1 if placeholders else 0
+            return 1 if placeholders or size_issues else 0
         if not args.yes and not _confirm(f"Create {path.name}.bak and remove auto-fixable lines?"):
             print("Aborted; file was not changed.", file=sys.stderr)
             return 1
@@ -205,15 +208,21 @@ def cmd_lint(args: argparse.Namespace) -> int:
         if placeholders:
             print("Placeholder issues remain after --fix; replace them manually.", file=sys.stderr)
             return 1
+        for issue in size_issues:
+            print(f"Line {issue.line}: {issue.message}", file=sys.stderr)
+        if size_issues:
+            return 1
         return 0
     if placeholders:
         result.issues.extend(placeholders)
+    if size_issues:
+        result.issues.extend(size_issues)
     if args.check:
-        for issue in placeholders:
+        for issue in placeholders + size_issues:
             print(f"Line {issue.line}: {issue.message}", file=sys.stderr)
-        return 0 if result.score >= args.threshold and not placeholders else 1
+        return 0 if result.score >= args.threshold and not placeholders and not size_issues else 1
     print(format_json(result) if args.json else format_human(result), end="")
-    return 1 if placeholders else 0
+    return 1 if placeholders or size_issues else 0
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -252,6 +261,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
         "warnings": [asdict(warning) for warning in scan.warnings],
         "dedup_removed": scan.dedup.removed,
         "line_count": line_count(content),
+        "byte_count": quality.byte_count,
         "quality_score": quality.score,
     }
     if args.json:
@@ -268,6 +278,13 @@ def _confirm(message: str) -> bool:
     return answer in {"y", "yes"}
 
 
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
 def _progress(message: str) -> None:
     print(f"{message}...", file=sys.stderr)
 
@@ -281,7 +298,7 @@ def _summary(content: str, output: Path, removed: int, *, dry_run: bool) -> None
 def _format_explain(report: dict) -> str:
     parts = [
         f"Output: {report['output']}",
-        f"Would generate: {report['line_count']} lines, quality {report['quality_score']}/100",
+        f"Would generate: {report['line_count']} lines, {report['byte_count']} bytes, quality {report['quality_score']}/100",
         "",
         "Docs read:",
     ]

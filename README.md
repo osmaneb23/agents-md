@@ -93,6 +93,7 @@ agents-md lint                         # score ./AGENTS.md
 agents-md lint path/to/AGENTS.md       # specific file
 agents-md lint --check --threshold 70  # exit 1 if score < 70
 agents-md lint --check --fail-on-placeholder  # exit 1 if template commands remain
+agents-md lint --check --max-lines 120 --max-bytes 12000
 agents-md lint --fix                   # remove duplicate and style-rule lines
 agents-md lint --json                  # machine-readable output
 ```
@@ -201,15 +202,17 @@ Fail PRs when the score drops below a threshold:
 - uses: actions/setup-python@v6
   with:
     python-version: "3.13"
-- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.2.1
+- uses: osmaneb23/agents-md/.github/actions/agents-md-lint@v0.2.2
   with:
     path: AGENTS.md
     threshold: "70"
-    version: "0.2.1"
+    version: "0.2.2"
     fail-on-placeholder: "true"
+    max-lines: "150"
+    max-bytes: "32000"
 ```
 
-The action installs the pinned `agent-context-md` package version from the `version` input. Pin to a release tag in normal workflows; security-sensitive workflows can pin the action to a full commit SHA.
+The action installs the pinned `agent-context-md` package version from the `version` input. Pin to a release tag in normal workflows; security-sensitive workflows can pin the action to a full commit SHA. `max-lines` and `max-bytes` are optional hard gates; they do not change the quality score.
 
 ---
 

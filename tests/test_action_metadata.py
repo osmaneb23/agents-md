@@ -24,6 +24,15 @@ def test_lint_action_exposes_placeholder_gate() -> None:
     assert "args+=(--fail-on-placeholder)" in action
 
 
+def test_lint_action_exposes_size_gates() -> None:
+    action = (ROOT / ".github/actions/agents-md-lint/action.yml").read_text(encoding="utf-8")
+
+    assert "max-lines:" in action
+    assert "max-bytes:" in action
+    assert 'args+=(--max-lines "${{ inputs.max-lines }}")' in action
+    assert 'args+=(--max-bytes "${{ inputs.max-bytes }}")' in action
+
+
 def test_publish_workflow_uses_matching_node24_artifact_actions() -> None:
     workflow = (ROOT / ".github/workflows/publish.yml").read_text(encoding="utf-8")
 

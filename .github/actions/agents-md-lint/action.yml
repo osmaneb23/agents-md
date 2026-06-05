@@ -12,11 +12,19 @@ inputs:
   version:
     description: agent-context-md package version to install
     required: false
-    default: "0.2.1"
+    default: "0.2.2"
   fail-on-placeholder:
     description: Fail if placeholder commands remain
     required: false
     default: "false"
+  max-lines:
+    description: Fail if AGENTS.md exceeds this many lines
+    required: false
+    default: ""
+  max-bytes:
+    description: Fail if AGENTS.md exceeds this many bytes
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -29,5 +37,11 @@ runs:
         args=(agents-md lint "${{ inputs.path }}" --check --threshold "${{ inputs.threshold }}")
         if [ "${{ inputs.fail-on-placeholder }}" = "true" ]; then
           args+=(--fail-on-placeholder)
+        fi
+        if [ -n "${{ inputs.max-lines }}" ]; then
+          args+=(--max-lines "${{ inputs.max-lines }}")
+        fi
+        if [ -n "${{ inputs.max-bytes }}" ]; then
+          args+=(--max-bytes "${{ inputs.max-bytes }}")
         fi
         "${args[@]}"
