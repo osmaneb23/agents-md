@@ -47,6 +47,7 @@ TEXT_PLACEHOLDER_RE = re.compile(
     r"\b(no high-confidence|add (?:the )?exact commands?|add a file/function-targeted command)\b",
     re.I,
 )
+AUTO_FIX_KINDS = {"readme-duplication", "style-rule"}
 
 
 def lint_file(path: Path) -> QualityResult:
@@ -180,10 +181,14 @@ def size_gate_issues(result: QualityResult, *, max_lines: int | None = None, max
     return issues
 
 
+def auto_fixable_issues(result: QualityResult) -> list[Issue]:
+    return [issue for issue in result.issues if issue.kind in AUTO_FIX_KINDS and issue.line > 0]
+
+
 def apply_fix(path: Path, result: QualityResult) -> Path:
     backup = path.with_suffix(path.suffix + ".bak")
     shutil.copy2(path, backup)
-    remove_lines = {issue.line for issue in result.issues if issue.kind in {"readme-duplication", "style-rule"} and issue.line > 0}
+    remove_lines = {issue.line for issue in auto_fixable_issues(result)}
     lines = path.read_text(encoding="utf-8").splitlines()
     kept = [line for index, line in enumerate(lines, start=1) if index not in remove_lines]
     path.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8")

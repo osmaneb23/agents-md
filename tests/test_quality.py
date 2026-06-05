@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agents_md.quality import lint_file, lint_text, placeholder_issues, size_gate_issues
+from agents_md.quality import auto_fixable_issues, lint_file, lint_text, placeholder_issues, size_gate_issues
 
 
 def test_scores_core_sections(tmp_path: Path) -> None:
@@ -61,6 +61,7 @@ def test_flags_readme_duplication(tmp_path: Path) -> None:
     result = lint_file(agents)
 
     assert any(issue.kind == "readme-duplication" for issue in result.issues)
+    assert [issue.kind for issue in auto_fixable_issues(result)] == ["readme-duplication"]
 
 
 def test_flags_readme_duplication_with_lowercase_readme(tmp_path: Path) -> None:
@@ -197,3 +198,4 @@ def test_size_gate_issues_do_not_change_score() -> None:
     assert result.score >= 70
     assert result.byte_count == len(text.encode("utf-8"))
     assert [issue.kind for issue in issues] == ["max-lines", "max-bytes"]
+    assert auto_fixable_issues(result) == []

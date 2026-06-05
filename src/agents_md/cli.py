@@ -10,7 +10,16 @@ from . import __version__
 from .fingerprint import FINGERPRINT_RE, compare_fingerprints, encode_fingerprint, extract_fingerprint, fingerprint_repo
 from .generator import has_managed_sections, line_count, render_document, render_sections, replace_managed_sections
 from .llm import LlmError, detect_provider, missing_key_message, synthesize_with_llm
-from .quality import apply_fix, format_human, format_json, lint_file, lint_text, placeholder_issues, size_gate_issues
+from .quality import (
+    apply_fix,
+    auto_fixable_issues,
+    format_human,
+    format_json,
+    lint_file,
+    lint_text,
+    placeholder_issues,
+    size_gate_issues,
+)
 from .scanner import scan_repo
 
 
@@ -197,9 +206,10 @@ def cmd_lint(args: argparse.Namespace) -> int:
     placeholders = placeholder_issues(path.read_text(encoding="utf-8")) if args.fail_on_placeholder else []
     size_issues = size_gate_issues(result, max_lines=args.max_lines, max_bytes=args.max_bytes)
     if args.fix:
-        if not result.issues:
+        fixable = auto_fixable_issues(result)
+        if not fixable:
             print("No auto-fixable issues detected.")
-            return 1 if placeholders or size_issues else 0
+            return 1 if result.issues or placeholders or size_issues else 0
         if not args.yes and not _confirm(f"Create {path.name}.bak and remove auto-fixable lines?"):
             print("Aborted; file was not changed.", file=sys.stderr)
             return 1

@@ -141,6 +141,18 @@ def test_lint_max_size_gates_exit_nonzero_without_lowering_score(tmp_path: Path,
     assert "maximum is 40" in captured.err
 
 
+def test_lint_fix_does_not_write_backup_without_auto_fixable_issues(tmp_path: Path, capsys) -> None:
+    agents = tmp_path / "AGENTS.md"
+    agents.write_text("# AGENTS.md\n\nToo short.\n", encoding="utf-8")
+
+    code = main(["lint", str(agents), "--fix", "--yes"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "No auto-fixable issues detected." in captured.out
+    assert not (tmp_path / "AGENTS.md.bak").exists()
+
+
 def test_init_merge_preserves_hand_written_file(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "pyproject.toml").write_text(
