@@ -277,6 +277,8 @@ The project's own [AGENTS.md](AGENTS.md) has the authoritative commands, convent
 
 Fixture sanity results live in [docs/FIXTURE_REPORT.md](docs/FIXTURE_REPORT.md).
 
+Generated examples live in [examples/](https://github.com/osmaneb23/agents-md/tree/main/examples).
+
 Report vulnerabilities through [SECURITY.md](SECURITY.md).
 
 Release steps live in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).

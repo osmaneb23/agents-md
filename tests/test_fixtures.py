@@ -7,6 +7,7 @@ from agents_md.scanner import scan_repo
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "repos"
+EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
 
 
 def _render_fixture(name: str) -> str:
@@ -35,3 +36,13 @@ def test_typescript_fixture_output_has_high_value_conventions() -> None:
     assert "HTTP calls appear centralized" in content
     assert "API_BASE_URL" in content
     assert line_count(content) < 90
+
+
+def test_examples_match_fixture_outputs() -> None:
+    cases = {
+        "python-cli.AGENTS.md": "python_cli",
+        "typescript-app.AGENTS.md": "typescript_app",
+    }
+
+    for example_name, fixture_name in cases.items():
+        assert (EXAMPLES / example_name).read_text(encoding="utf-8") == _render_fixture(fixture_name)

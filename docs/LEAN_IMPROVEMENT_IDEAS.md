@@ -1405,6 +1405,8 @@ Bad detector reports need structured data. Otherwise issues become "it was bad o
 
 ### Add `examples/` only if generated from fixtures
 
+Status: done for the Python CLI and TypeScript app fixtures. Tests assert examples match fixture-generated output.
+
 Good:
 
 - `examples/python-cli.AGENTS.md`
