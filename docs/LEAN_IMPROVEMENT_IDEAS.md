@@ -1391,6 +1391,8 @@ Remaining lean follow-up: enable GitHub private vulnerability reporting when the
 
 ### Add focused issue templates
 
+Status: one focused generation report form added. It covers command mistakes, convention false positives/misses, and docs dedup issues without splitting early feedback across four separate forms.
+
 Templates:
 
 - security contact request with no exploit details

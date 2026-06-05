@@ -33,6 +33,19 @@ def test_lint_action_exposes_size_gates() -> None:
     assert 'args+=(--max-bytes "${{ inputs.max-bytes }}")' in action
 
 
+def test_generation_report_issue_form_collects_detector_evidence() -> None:
+    form = (ROOT / ".github/ISSUE_TEMPLATE/generation_report.yml").read_text(encoding="utf-8")
+
+    assert "Report type" in form
+    assert "Wrong generated command" in form
+    assert "False-positive convention" in form
+    assert "Missing convention" in form
+    assert "README/docs dedup issue" in form
+    assert "Repository signals" in form
+    assert "Expected output" in form
+    assert "I removed secrets and private code" in form
+
+
 def test_publish_workflow_uses_matching_node24_artifact_actions() -> None:
     workflow = (ROOT / ".github/workflows/publish.yml").read_text(encoding="utf-8")
 

@@ -1,0 +1,61 @@
+name: Generation report
+description: Report a wrong command, detector miss, false-positive convention, or dedup issue.
+title: "[Generation]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use public-safe snippets only. Do not paste secrets, private source code, provider API keys, or full proprietary files.
+  - type: dropdown
+    id: report-type
+    attributes:
+      label: Report type
+      options:
+        - Wrong generated command
+        - False-positive convention
+        - Missing convention
+        - README/docs dedup issue
+        - Other generation issue
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: agents-md version
+      placeholder: agents-md 0.2.2
+    validations:
+      required: true
+  - type: textarea
+    id: generated-output
+    attributes:
+      label: Generated output
+      description: Paste only the relevant AGENTS.md section or `agents-md explain` excerpt.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: repo-signals
+    attributes:
+      label: Repository signals
+      description: List the public-safe files or snippets that should have led to different output.
+      placeholder: |
+        - package manager / lockfile:
+        - relevant scripts/tasks:
+        - relevant docs already present:
+        - relevant source path patterns:
+    validations:
+      required: true
+  - type: textarea
+    id: expected-output
+    attributes:
+      label: Expected output
+      description: What exact line should agents-md emit, remove, or change?
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets and private code from this report.
+          required: true
