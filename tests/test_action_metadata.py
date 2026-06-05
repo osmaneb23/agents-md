@@ -17,6 +17,15 @@ def test_lint_action_installs_pinned_package_version() -> None:
     assert "python -m pip install agent-context-md\n" not in action
 
 
+def test_readme_action_example_matches_package_version() -> None:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    version = pyproject["project"]["version"]
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert f"osmaneb23/agents-md/.github/actions/agents-md-lint@v{version}" in readme
+    assert f'version: "{version}"' in readme
+
+
 def test_lint_action_exposes_placeholder_gate() -> None:
     action = (ROOT / ".github/actions/agents-md-lint/action.yml").read_text(encoding="utf-8")
 
