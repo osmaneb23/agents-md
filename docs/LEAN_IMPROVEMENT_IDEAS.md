@@ -1387,7 +1387,7 @@ Why:
 
 Open-source users look for a vulnerability reporting path. OpenSSF Scorecard also recognizes a security policy.
 
-Remaining lean follow-up: enable GitHub private vulnerability reporting when the maintainer is ready to accept reports privately. The policy currently avoids claiming that private reporting is enabled.
+GitHub private vulnerability reporting is enabled for the repository.
 
 ### Add focused issue templates
 
@@ -1395,7 +1395,6 @@ Status: one focused generation report form added. It covers command mistakes, co
 
 Templates:
 
-- security contact request with no exploit details
 - wrong generated command
 - false-positive convention
 - missing convention

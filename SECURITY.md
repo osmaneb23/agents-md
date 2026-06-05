@@ -10,9 +10,9 @@ Do not open a public issue with exploit details, real secrets, private repositor
 
 Preferred reporting path:
 
-1. Check whether GitHub private vulnerability reporting is available for this repository.
-2. If it is unavailable, open a [security contact issue](https://github.com/osmaneb23/agents-md/issues/new?template=security_contact.md) with only a short non-sensitive summary.
-3. Wait for a maintainer to move the discussion to a private channel before sharing reproduction details.
+1. Use GitHub private vulnerability reporting for this repository: https://github.com/osmaneb23/agents-md/security/advisories/new
+2. Include only synthetic files, fake tokens, and minimal reproduction details.
+3. Do not publish details publicly until a fix, mitigation, or advisory is available.
 
 Helpful report details:
 
